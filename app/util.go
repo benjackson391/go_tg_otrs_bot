@@ -113,7 +113,7 @@ func StructToMap(obj interface{}) (map[string]interface{}, error) {
 	return dataMap, nil
 }
 
-func getInitialKeyboard() *tgbotapi.InlineKeyboardMarkup {
+func GetInitialKeyboard() *tgbotapi.InlineKeyboardMarkup {
 	buttons := []models.Button{
 		{
 			Title:    "Новая заявка",

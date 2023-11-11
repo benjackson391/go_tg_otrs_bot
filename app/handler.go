@@ -27,27 +27,21 @@ var (
 	LockID      int = 1
 )
 
-func handleCommand(update tgbotapi.Update, bot *tgbotapi.BotAPI, userData *models.UserState, txn *newrelic.Transaction) {
-	Logger.Debug("handleCommand")
-	Logger.Debug("update.Message.Chat.ID: ", update.Message.Chat.ID)
+func HandleCommand(update tgbotapi.Update, bot models.BotAPI, userData *models.UserState, txn *newrelic.Transaction) {
+	// Logger.Debug("handleCommand")
+	// Logger.Debug("update.Message.Chat.ID: ", update.Message.Chat.ID)
 
 	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
 	switch update.Message.Command() {
 	case "start":
-		msg.Text = welcome + "\n\nВы можете создать, обновить или проверить статус вашей заявки." +
-			"Для остановки бота просто напишите /stop, для повторного запуска нажмите /start"
-
-		msg.ReplyMarkup = getInitialKeyboard()
+		msg.Text = WelcomeMessage + "\n\n" + WelcomeDescription
+		msg.ReplyMarkup = GetInitialKeyboard()
 		bot.Send(msg)
 	case "stop":
-		msg.Text = "До встречи."
-		bot.Send(msg)
-		// delete(userStates, update.Message.From.ID)
-	case "dump":
-		msg.Text = "userStates"
+		msg.Text = LeaveMessage
 		bot.Send(msg)
 	default:
-		msg.Text = "Unknown command."
+		msg.Text = UnknownCommand
 		bot.Send(msg)
 	}
 }
@@ -270,7 +264,7 @@ func HandleUpdate(update tgbotapi.Update, bot *tgbotapi.BotAPI, userData *models
 
 	if update.Message != nil {
 		if update.Message.IsCommand() {
-			handleCommand(update, bot, userData, txn)
+			HandleCommand(update, bot, userData, txn)
 		} else if update.Message.Document != nil {
 			HandleDocument(update, bot, userData, txn)
 		} else {
@@ -327,7 +321,7 @@ func handleAuthoriseMessage(update tgbotapi.Update, bot *tgbotapi.BotAPI, userDa
 			msg := tgbotapi.NewMessage(update.Message.Chat.ID, text)
 
 			if userData.Code == CodeInt {
-				msg.ReplyMarkup = getInitialKeyboard()
+				msg.ReplyMarkup = GetInitialKeyboard()
 			}
 			bot.Send(msg)
 

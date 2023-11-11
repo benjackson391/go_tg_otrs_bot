@@ -30,7 +30,7 @@ func start(callback *tgbotapi.CallbackQuery, bot *tgbotapi.BotAPI) {
 	msg := tgbotapi.NewMessage(callback.Message.Chat.ID, "")
 	msg.Text = "\n\nВы можете создать, обновить или проверить статус вашей заявки. Для остановки бота просто напишите /stop, для повторного запуска нажмите /start"
 
-	msg.ReplyMarkup = getInitialKeyboard()
+	msg.ReplyMarkup = GetInitialKeyboard()
 	bot.Send(msg)
 }
 
