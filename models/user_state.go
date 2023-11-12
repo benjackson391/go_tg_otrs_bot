@@ -12,4 +12,5 @@ type UserState struct {
 	Action            string
 	TicketID          string
 	CustomerUserLogin string
+	Vote              *string
 }

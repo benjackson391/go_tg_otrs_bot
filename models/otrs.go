@@ -16,14 +16,14 @@ type Article struct {
 }
 
 type Ticket struct {
-	Title        *string `json:"Title"`
-	QueueID      *int    `json:"QueueID"`
-	TypeID       *int    `json:"TypeID"`
-	CustomerUser *string `json:"CustomerUser"`
-	StateID      *int    `json:"StateID"`
-	PriorityID   *int    `json:"PriorityID"`
-	OwnerID      *int    `json:"OwnerID"`
-	LockID       *int    `json:"LockID"`
+	Title        *string `json:"Title,omitempty"`
+	QueueID      *int    `json:"QueueID,omitempty"`
+	TypeID       *int    `json:"TypeID,omitempty"`
+	CustomerUser *string `json:"CustomerUser,omitempty"`
+	StateID      *int    `json:"StateID,omitempty"`
+	PriorityID   *int    `json:"PriorityID,omitempty"`
+	OwnerID      *int    `json:"OwnerID,omitempty"`
+	LockID       *int    `json:"LockID,omitempty"`
 }
 
 type VoteTicket struct {
@@ -42,13 +42,13 @@ type DynamicField struct {
 }
 
 type OtrsRequest struct {
-	TicketID     *string       `json:"TicketID"`
-	Ticket       *Ticket       `json:"Ticket"`
-	Article      *Article      `json:"Article"`
-	Attachment   *Attachment   `json:"Attachment"`
-	DynamicField *DynamicField `json:"DynamicField"`
-	UserLogin    string
-	Password     string
+	TicketID     *string       `json:"TicketID,omitempty"`
+	Ticket       *Ticket       `json:"Ticket,omitempty"`
+	Article      *Article      `json:"Article,omitempty"`
+	Attachment   *Attachment   `json:"Attachment,omitempty"`
+	DynamicField *DynamicField `json:"DynamicField,omitempty"`
+	UserLogin    string        `json:"UserLogin"`
+	Password     string        `json:"Password"`
 }
 
 type OtrsResponse struct {
@@ -58,9 +58,9 @@ type OtrsResponse struct {
 }
 
 type OtrsConfirmRequest struct {
-	Email         string `json:"Email"`
-	Code          int    `json:"Code"`
-	TelegramLogin string `json:"TelegramLogin"`
+	Email         string `json:"Email,omitempty"`
+	Code          int    `json:"Code,omitempty"`
+	TelegramLogin string `json:"TelegramLogin,omitempty"`
 	UserLogin     string `json:"UserLogin"`
 	Password      string `json:"Password"`
 }
@@ -69,10 +69,4 @@ type OtrsConfirmResponse struct {
 	Data      map[string]string `json:"data"`
 	Sent      int               `json:"sent"`
 	UserLogin string            `json:"user_login"`
-}
-
-type OtrsVoteRequest struct {
-	TicketID     interface{}  `json:"TicketID"`
-	DynamicField DynamicField `json:"DynamicField"`
-	Ticket       *VoteTicket  `json:"Ticket"`
 }

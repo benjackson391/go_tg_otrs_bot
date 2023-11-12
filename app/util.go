@@ -2,8 +2,9 @@ package app
 
 import (
 	"fmt"
+	"io"
 	"math/rand"
-	"reflect"
+	"net/http"
 	"tg_bot/models"
 	"time"
 
@@ -91,28 +92,6 @@ func convertTicketsToButtons(tickets []models.TgTicket) []models.Button {
 	return buttons
 }
 
-func StructToMap(obj interface{}) (map[string]interface{}, error) {
-	val := reflect.ValueOf(obj)
-	if val.Kind() == reflect.Ptr {
-		val = val.Elem()
-	}
-	if val.Kind() != reflect.Struct {
-		return nil, fmt.Errorf("expected a struct, received %T", obj)
-	}
-
-	dataMap := make(map[string]interface{})
-	for i := 0; i < val.NumField(); i++ {
-		field := val.Field(i)
-		fieldType := val.Type().Field(i)
-		jsonTag := fieldType.Tag.Get("json")
-		if jsonTag == "" {
-			jsonTag = fieldType.Name
-		}
-		dataMap[jsonTag] = field.Interface()
-	}
-	return dataMap, nil
-}
-
 func GetInitialKeyboard() *tgbotapi.InlineKeyboardMarkup {
 	buttons := []models.Button{
 		{
@@ -151,4 +130,32 @@ func getPendingTickets(tickets []models.TgTicket) []models.TgTicket {
 		}
 	}
 	return pendingTickets
+}
+
+func GetFileContent(doc *tgbotapi.Document, bot models.BotAPI) ([]byte, error) {
+	file, err := bot.GetFile(tgbotapi.FileConfig{FileID: doc.FileID})
+	if err != nil {
+		Logger.Warn(err)
+		return nil, err
+	}
+
+	response, err := http.Get(file.Link(""))
+	if err != nil {
+		Logger.Warn(err)
+		return nil, err
+	}
+	defer response.Body.Close()
+
+	return io.ReadAll(response.Body)
+}
+
+func CleanUpUserData(handle string, userData *models.UserState) {
+	switch handle {
+	case "HandleDocument":
+		userData.Topic = ""
+		userData.Description = ""
+		userData.TicketID = ""
+	default:
+		userData = &models.UserState{}
+	}
 }

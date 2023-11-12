@@ -5,7 +5,6 @@ import (
 	"tg_bot/models"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 )
 
@@ -43,7 +42,6 @@ func newRequest(callback *tgbotapi.CallbackQuery, bot *tgbotapi.BotAPI, userData
 
 func checkStatus(callback *tgbotapi.CallbackQuery, bot *tgbotapi.BotAPI, userData *models.UserState) {
 	Logger.Debug("checkStatus")
-	spew.Dump(userData)
 	state_type_count := getStateTypeCount(userData.CustomerUserLogin)
 
 	buttons := []models.Button{}
@@ -99,72 +97,19 @@ func attachFile(callback *tgbotapi.CallbackQuery, bot *tgbotapi.BotAPI) {
 func create(callback *tgbotapi.CallbackQuery, bot *tgbotapi.BotAPI, userData *models.UserState) {
 	Logger.Debug("create")
 
-	if userData.TicketID != "" {
-		_, err := otrsRequest("update", models.OtrsRequest{
-			TicketID: &userData.TicketID,
-			// Ticket:   nil,
-			Article: &models.Article{
-				CommunicationChannel: "Internal",
-				SenderType:           "customer",
-				Charset:              "utf-8",
-				MimeType:             "text/plain",
-				From:                 userData.CustomerUserLogin,
-				Subject:              "Telegram message",
-				Body:                 userData.Description,
-			},
-		})
-
-		if err != nil {
-			Logger.Warn(err)
-			bot.Send(tgbotapi.NewMessage(callback.Message.Chat.ID, "Ошибка при создании заявки."))
-			return
-		}
-		userData = &models.UserState{}
-
-		msg := tgbotapi.NewMessage(callback.Message.Chat.ID, "Вашe обращение обновлено")
-		buttons := []models.Button{
-			{Title: "Назад", Callback: "start"},
-		}
-		msg.ReplyMarkup = getInlineKeyboard(buttons)
-		bot.Send(msg)
-	} else {
-		new_ticket, err := otrsRequest("create", models.OtrsRequest{
-			Ticket: &models.Ticket{
-				Title:        &userData.Topic,
-				QueueID:      &QueueID,
-				TypeID:       &TypeID, // Request for service
-				CustomerUser: &userData.CustomerUserLogin,
-				StateID:      &StateID,    // new
-				PriorityID:   &PriorityID, // normal
-				OwnerID:      &OwnerID,    // admin
-				LockID:       &LockID,     // unlock
-			},
-			Article: &models.Article{
-				CommunicationChannel: "Internal",
-				SenderType:           "customer",
-				Charset:              "utf-8",
-				MimeType:             "text/plain",
-				From:                 userData.CustomerUserLogin,
-				Subject:              userData.Topic,
-				Body:                 userData.Description,
-			},
-		})
-
-		if err != nil {
-			Logger.Warn(err)
-			bot.Send(tgbotapi.NewMessage(callback.Message.Chat.ID, "Ошибка при создании заявки."))
-			return
-		}
-		userData = &models.UserState{}
-
-		msg := tgbotapi.NewMessage(callback.Message.Chat.ID, fmt.Sprintf("Вашe обращение принято. Номер заявки #%s", new_ticket.TicketNumber))
-		buttons := []models.Button{
-			{Title: "Назад", Callback: "start"},
-		}
-		msg.ReplyMarkup = getInlineKeyboard(buttons)
-		bot.Send(msg)
+	if userData.Description == "" {
+		return
 	}
 
+	_, text := CreateOrUpdateTicket(bot, userData, nil, nil)
+	msg := tgbotapi.NewMessage(callback.Message.Chat.ID, text)
+	buttons := []models.Button{
+		{Title: "Назад", Callback: "start"},
+	}
+	msg.ReplyMarkup = getInlineKeyboard(buttons)
+	bot.Send(msg)
+
+	CleanUpUserData("", userData)
 }
 
 func preview_ticket(callback *tgbotapi.CallbackQuery, bot *tgbotapi.BotAPI, userData *models.UserState) {

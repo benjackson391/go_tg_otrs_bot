@@ -2,14 +2,11 @@ package app
 
 import (
 	"fmt"
-	"io/ioutil"
-	"net/http"
 	"regexp"
 	"strconv"
 	"sync"
 	"tg_bot/models"
 
-	"github.com/davecgh/go-spew/spew"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 	"github.com/newrelic/go-agent/v3/newrelic"
 )
@@ -19,18 +16,10 @@ var (
 	ticketRegex        = regexp.MustCompile(`^\d+$`)
 	voteRegex          = regexp.MustCompile(`^vote_?(\d)?$`)
 	userStates  sync.Map
-	QueueID     int = 3
-	TypeID      int = 3
-	StateID     int = 1
-	PriorityID  int = 3
-	OwnerID     int = 1
-	LockID      int = 1
 )
 
 func HandleCommand(update tgbotapi.Update, bot models.BotAPI, userData *models.UserState, txn *newrelic.Transaction) {
-	// Logger.Debug("handleCommand")
-	// Logger.Debug("update.Message.Chat.ID: ", update.Message.Chat.ID)
-
+	Logger.Debug("HandleCommand")
 	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
 	switch update.Message.Command() {
 	case "start":
@@ -40,116 +29,37 @@ func HandleCommand(update tgbotapi.Update, bot models.BotAPI, userData *models.U
 	case "stop":
 		msg.Text = LeaveMessage
 		bot.Send(msg)
+		CleanUpUserData("", userData)
 	default:
 		msg.Text = UnknownCommand
 		bot.Send(msg)
 	}
 }
 
-func HandleDocument(update tgbotapi.Update, bot *tgbotapi.BotAPI, userData *models.UserState, txn *newrelic.Transaction) {
-	Logger.Debug("handleDocument")
-
+func HandleDocument(update tgbotapi.Update, bot models.BotAPI, userData *models.UserState, txn *newrelic.Transaction) {
+	Logger.Debug("HandleDocument")
 	doc := update.Message.Document
 
-	fileID := doc.FileID
-
-	file, err := bot.GetFile(tgbotapi.FileConfig{FileID: fileID})
-	if err != nil {
-		Logger.Warn(err)
-		return
-	}
-
-	response, err := http.Get(file.Link(bot.Token))
-	if err != nil {
-		Logger.Warn(err)
-		return
-	}
-	defer response.Body.Close()
-
-	documentBytes, err := ioutil.ReadAll(response.Body)
-	if err != nil {
-		Logger.Warn("Error getting file: ", err)
-		bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Произошла ошибка при получении файла."))
-		return
-	}
-
-	var text = ""
-	var new_ticket models.OtrsResponse
-	if Mock_OTRS == "1" {
-		new_ticket = models.OtrsResponse{TicketNumber: "123"}
-		text = fmt.Sprintf("Вашe обращение принято. Номер заявки #%s", new_ticket.TicketNumber)
+	if doc.FileSize > FileSizeLimit {
+		bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, BigFileMessage))
 	} else {
-		if userData.TicketID != "" {
-			new_ticket, err = otrsRequest("update", models.OtrsRequest{
-				TicketID: &userData.TicketID,
-				Article: &models.Article{
-					CommunicationChannel: "Internal",
-					SenderType:           "customer",
-					Charset:              "utf-8",
-					MimeType:             "text/plain",
-					From:                 userData.CustomerUserLogin,
-					Subject:              "Telegram message",
-					Body:                 userData.Description,
-				},
-				Attachment: &models.Attachment{
-					Content:     string(documentBytes),
-					ContentType: doc.MimeType,
-					Filename:    doc.FileName,
-				},
-			})
+		documentBytes, err := GetFileContent(doc, bot)
 
-			if err != nil {
-				Logger.Warn(err)
-				bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Ошибка при обновлении заявки."))
-				return
-			}
-			text = fmt.Sprintf("Вашe обращение принято. Номер заявки #%s", new_ticket.TicketNumber)
+		if err != nil {
+			Logger.Warn("Error getting file: ", err)
+			bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, ErrorMsq1))
 		} else {
-			new_ticket, err = otrsRequest("create", models.OtrsRequest{
-				Ticket: &models.Ticket{
-					Title:        &userData.Topic,
-					QueueID:      &QueueID,
-					TypeID:       &TypeID, // Request for service
-					CustomerUser: &userData.CustomerUserLogin,
-					StateID:      &StateID,    // new
-					PriorityID:   &PriorityID, // normal
-					OwnerID:      &OwnerID,    // admin
-					LockID:       &LockID,     // unlock
-				},
-				Article: &models.Article{
-					CommunicationChannel: "Internal",
-					SenderType:           "customer",
-					Charset:              "utf-8",
-					MimeType:             "text/plain",
-					From:                 userData.CustomerUserLogin,
-					Subject:              userData.Topic,
-					Body:                 userData.Description,
-				},
-				Attachment: &models.Attachment{
-					Content:     string(documentBytes),
-					ContentType: doc.MimeType,
-					Filename:    doc.FileName,
-				},
-			})
-
-			if err != nil {
-				Logger.Warn(err)
-				bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Ошибка при создании заявки."))
-				return
+			_, text := CreateOrUpdateTicket(bot, userData, doc, &documentBytes)
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, text)
+			buttons := []models.Button{
+				{Title: "Назад", Callback: "start"},
 			}
-			text = "Вашe обращение обновлено"
+			msg.ReplyMarkup = getInlineKeyboard(buttons)
+			bot.Send(msg)
 		}
 	}
-	msg := tgbotapi.NewMessage(update.Message.Chat.ID, text)
-	buttons := []models.Button{
-		{Title: "Назад", Callback: "start"},
-	}
-	msg.ReplyMarkup = getInlineKeyboard(buttons)
-	bot.Send(msg)
 
-	// clean user
-	userData.Topic = ""
-	userData.Description = ""
+	CleanUpUserData("HandleDocument", userData)
 }
 
 func handleMessage(update tgbotapi.Update, bot *tgbotapi.BotAPI, userData *models.UserState, txn *newrelic.Transaction) {
@@ -174,7 +84,6 @@ func handleMessage(update tgbotapi.Update, bot *tgbotapi.BotAPI, userData *model
 		bot.Send(msg)
 	case "waiting_for_comment":
 		userData.Description = update.Message.Text
-		spew.Dump(userData)
 		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Прикрепить файл?")
 		inlineKeyboard := tgbotapi.NewInlineKeyboardMarkup(
 			tgbotapi.NewInlineKeyboardRow(
@@ -216,7 +125,10 @@ func handleCallbackQuery(update tgbotapi.Update, bot *tgbotapi.BotAPI, userData 
 		bot.Send(msg)
 
 	case "attach_file":
-		attachFile(callback, bot)
+		if userData.Action != "attach_file" {
+			userData.Action = "attach_file"
+			attachFile(callback, bot)
+		}
 	case "create":
 		create(callback, bot, userData)
 	default:
@@ -227,33 +139,17 @@ func handleCallbackQuery(update tgbotapi.Update, bot *tgbotapi.BotAPI, userData 
 		} else if voteRegex.MatchString(callback.Data) {
 			Logger.Debug("default:is_vote")
 			match := voteRegex.FindStringSubmatch(callback.Data)
-			spew.Dump(match)
-			closedStateID := 2
-			if match[1] == "" {
-				closedStateID = 4 // open
-			}
 
-			updated_ticket, err := otrsVoteRequest("update", models.OtrsVoteRequest{
-				TicketID: &userData.TicketID,
-				Ticket: &models.VoteTicket{
-					StateID: &closedStateID, //closed successful
-				},
-				DynamicField: models.DynamicField{
-					Name:  "TicketVote",
-					Value: match[1],
-				},
-			})
+			userData.Vote = &match[1]
 
-			spew.Dump(updated_ticket)
-			spew.Dump(err)
-
-			msg := tgbotapi.NewMessage(callback.Message.Chat.ID, "Обращение оценено")
+			_, text := CreateOrUpdateTicket(bot, userData, nil, nil)
+			msg := tgbotapi.NewMessage(callback.Message.Chat.ID, text)
 			buttons := []models.Button{
 				{Title: "Назад", Callback: "start"},
 			}
 			msg.ReplyMarkup = getInlineKeyboard(buttons)
 			bot.Send(msg)
-			userData.Action = ""
+			CleanUpUserData("", userData)
 		}
 	}
 }

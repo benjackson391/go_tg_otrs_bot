@@ -4,81 +4,150 @@ import (
 	"bytes"
 	"crypto/tls"
 	"encoding/json"
-	"io/ioutil"
+	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"tg_bot/models"
+
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 )
 
 var (
-	URL       string
-	USER      string
-	PASS      string
-	Mock_OTRS string
+	URL        string
+	USER       string
+	PASS       string
+	Mock_OTRS  string
+	QueueID    int = 3
+	TypeID     int = 3
+	StateID    int = 1
+	PriorityID int = 3
+	OwnerID    int = 1
+	LockID     int = 1
 )
 
-func performHttpRequest(path string, jsonData interface{}, responseJson interface{}) error {
-	jsonDataMap, err := StructToMap(jsonData)
-	if err != nil {
-		Logger.Fatal(err)
-		return err
+func CreateOrUpdateTicket(bot models.BotAPI, userData *models.UserState, doc *tgbotapi.Document, documentBytes *[]byte) (models.OtrsResponse, string) {
+	var ticket models.OtrsResponse
+	var path = "update"
+
+	template := TicketUpdatedMessage
+
+	if Mock_OTRS == "1" {
+		ticket = models.OtrsResponse{TicketNumber: "123"}
+		template = TicketCreatedTemplate
+	} else {
+		otrs_request := models.OtrsRequest{
+			TicketID: &userData.TicketID,
+			Article: &models.Article{
+				CommunicationChannel: "Internal",
+				SenderType:           "customer",
+				Charset:              "utf-8",
+				MimeType:             "text/plain",
+				From:                 userData.CustomerUserLogin,
+				Subject:              "Telegram message",
+				Body:                 userData.Description,
+			},
+		}
+
+		if userData.TicketID == "" { // create
+			path = "create"
+			otrs_request.Ticket = &models.Ticket{
+				Title:        &userData.Topic,
+				QueueID:      &QueueID,
+				TypeID:       &TypeID, // Request for service
+				CustomerUser: &userData.CustomerUserLogin,
+				StateID:      &StateID,    // new
+				PriorityID:   &PriorityID, // normal
+				OwnerID:      &OwnerID,    // admin
+				LockID:       &LockID,     // unlock
+			}
+			otrs_request.Article.Subject = userData.Topic
+			template = TicketCreatedTemplate
+		} else {
+			template = TicketUpdatedMessage
+			if userData.Vote != nil {
+				if *userData.Vote != "" {
+					otrs_request.DynamicField = &models.DynamicField{
+						Name:  "TicketVote",
+						Value: userData.Vote,
+					}
+					closedState := 2 // closed
+					otrs_request.Ticket.StateID = &closedState
+					template = "Обращение %s оценено"
+				} else {
+					otrs_request.DynamicField = &models.DynamicField{
+						Name:  "TicketVote",
+						Value: userData.Vote,
+					}
+					openState := 4 // open
+					otrs_request.Ticket.StateID = &openState
+					template = "Обращение %s оценено"
+				}
+			}
+		}
+
+		if documentBytes != nil && len(*documentBytes) > 0 {
+			otrs_request.Attachment = &models.Attachment{
+				Content:     string(*documentBytes),
+				ContentType: doc.MimeType,
+				Filename:    doc.FileName,
+			}
+		}
+
+		ticket, err = otrsRequest(path, otrs_request)
+		if err != nil {
+			Logger.Warn(err)
+			return models.OtrsResponse{}, "Ошибка при создании заявки."
+		}
 	}
 
-	jsonDataMap["UserLogin"] = USER
-	jsonDataMap["Password"] = PASS
+	return ticket, fmt.Sprintf(template, ticket.TicketNumber)
+}
 
-	jsonValue, err := json.Marshal(jsonDataMap)
+func performHttpRequest(path string, encodedJson []byte) ([]byte, error) {
+	request, err := http.NewRequest("POST", URL+"/"+path, bytes.NewBuffer(encodedJson))
 	if err != nil {
-		return err
+		return nil, err
+	}
+	request.Header.Set("Content-Type", "application/json")
+
+	if transport, ok := http.DefaultTransport.(*http.Transport); ok {
+		transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 	}
 
-	req, err := http.NewRequest("POST", URL+"/"+path, bytes.NewBuffer(jsonValue))
+	response, err := http.DefaultClient.Do(request)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	req.Header.Set("Content-Type", "application/json")
+	defer response.Body.Close()
 
-	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
-
-	resp, err := http.DefaultClient.Do(req)
+	body, err := io.ReadAll(response.Body)
 	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return err
+		return nil, err
 	}
 
-	err = json.Unmarshal(body, &responseJson)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return body, nil
 }
 
 func otrsRequest(path string, jsonData models.OtrsRequest) (models.OtrsResponse, error) {
 	var responseJson models.OtrsResponse
 
-	if Mock_OTRS == "1" {
-		return models.OtrsResponse{TicketNumber: "123"}, nil
+	jsonData.UserLogin = USER
+	jsonData.Password = PASS
+
+	encodedJson, err := json.Marshal(jsonData)
+	if err != nil {
+		return responseJson, err
 	}
 
-	err := performHttpRequest(path, jsonData, &responseJson)
-	return responseJson, err
-}
+	response, err := performHttpRequest(path, encodedJson)
 
-func otrsVoteRequest(path string, jsonData models.OtrsVoteRequest) (models.OtrsResponse, error) {
-	var responseJson models.OtrsResponse
-
-	if Mock_OTRS == "1" {
-		return models.OtrsResponse{TicketNumber: "123"}, nil
+	err = json.Unmarshal(response, &responseJson)
+	if err != nil {
+		return responseJson, err
 	}
 
-	err := performHttpRequest(path, jsonData, &responseJson)
-	return responseJson, err
+	return responseJson, nil
 }
 
 func otrsConfirm(path string, jsonData models.OtrsConfirmRequest) (models.OtrsConfirmResponse, error) {
@@ -88,7 +157,7 @@ func otrsConfirm(path string, jsonData models.OtrsConfirmRequest) (models.OtrsCo
 	// 	return models.OtrsConfirmResponse{Sent: 1}, nil
 	// }
 
-	err := performHttpRequest(path, jsonData, &responseJson)
+	// err := performHttpRequest(path, jsonData, &responseJson)
 	return responseJson, err
 }
 
