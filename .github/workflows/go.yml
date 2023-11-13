@@ -7,7 +7,7 @@ on:
     branches: [ main ]
 
 jobs:
-  build:
+  test:
     name: Test
     runs-on: self-hosted
     steps:
@@ -21,6 +21,7 @@ jobs:
       run: go test -v ./...
   coverage:
     name: Coverage
+    needs: test
     runs-on: self-hosted
     steps:
     - name: Set up Go
@@ -43,3 +44,20 @@ jobs:
         name: coverage-report
         path: coverage.html
         retention-days: 5
+  docker:
+    name: Docker puch
+    needs: test
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Login to Docker Hub
+        run: echo ${{ secrets.DOCKER_PASSWORD }} | docker login --username ${{ secrets.DOCKER_USERNAME }} --password-stdin
+
+      - name: Build Docker image
+        run: docker build -t ilyaksyonov/gotgbot:latest .
+
+      - name: Push Docker image
+        run: docker push ilyaksyonov/gotgbot:latest

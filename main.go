@@ -21,33 +21,25 @@ import (
 	"tg_bot/app"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
-	"github.com/joho/godotenv"
 	"github.com/newrelic/go-agent/v3/newrelic"
 	"github.com/withmandala/go-log"
 )
 
 var (
-	botToken       string
-	err            error
-	newrelic_token string
-	Logger         *log.Logger
+	err    error
+	Logger *log.Logger
 )
-
-func loadEnv() {
-	err := godotenv.Load()
-	if err != nil {
-		Logger.Fatal("Error loading .env file")
-	}
-	botToken = os.Getenv("BOT_TOKEN")
-	newrelic_token = os.Getenv("NEWRELIC")
-}
 
 func setupLogger() {
 	Logger = log.New(os.Stderr).WithColor().WithDebug()
 	app.InitLogger(Logger)
+
+	env := os.Environ()
+	Logger.Info(env)
 }
 
 func setupBotAPI() *tgbotapi.BotAPI {
+	botToken := os.Getenv("BOT_TOKEN")
 	bot, err := tgbotapi.NewBotAPI(botToken)
 	if err != nil {
 		Logger.Fatal(err)
@@ -59,7 +51,7 @@ func setupBotAPI() *tgbotapi.BotAPI {
 func run(bot *tgbotapi.BotAPI) {
 	appNR, err := newrelic.NewApplication(
 		newrelic.ConfigAppName("tg_bot"),
-		newrelic.ConfigLicense("eu01xx77231d3545dab7a73708119005FFFFNRAL"),
+		newrelic.ConfigLicense(os.Getenv("NEWRELIC")),
 		newrelic.ConfigAppLogForwardingEnabled(true),
 	)
 	if err != nil {
@@ -92,7 +84,6 @@ func run(bot *tgbotapi.BotAPI) {
 }
 
 func main() {
-	loadEnv()
 	setupLogger()
 	app.ConnectDB()
 	app.SetupOTRSConnector()
