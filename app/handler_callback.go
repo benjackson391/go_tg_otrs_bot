@@ -107,7 +107,7 @@ func create(callback *tgbotapi.CallbackQuery, bot models.BotAPI, userData *model
 	msg.ReplyMarkup = getInlineKeyboard(buttons)
 	bot.Send(msg)
 
-	CleanUpUserData("", userData)
+	CleanUpUserData(userData)
 }
 
 func preview_ticket(callback *tgbotapi.CallbackQuery, bot models.BotAPI, userData *models.UserState) {

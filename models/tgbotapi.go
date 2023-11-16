@@ -7,4 +7,5 @@ import (
 type BotAPI interface {
 	Send(c tgbotapi.Chattable) (tgbotapi.Message, error)
 	GetFile(c tgbotapi.FileConfig) (tgbotapi.File, error)
+	GetFileDirectURL(fileID string) (string, error)
 }

@@ -24,6 +24,7 @@ var (
 type BotAPI interface {
 	Send(c tgbotapi.Chattable) (tgbotapi.Message, error)
 	GetFile(c tgbotapi.FileConfig) (tgbotapi.File, error)
+	GetFileDirectURL(fileID string) (string, error)
 }
 
 type MockBotAPI struct {
@@ -40,6 +41,11 @@ func (m *MockBotAPI) Send(c tgbotapi.Chattable) (tgbotapi.Message, error) {
 func (m *MockBotAPI) GetFile(c tgbotapi.FileConfig) (tgbotapi.File, error) {
 	args := m.Called(c)
 	return args.Get(0).(tgbotapi.File), args.Error(1)
+}
+
+func (m *MockBotAPI) GetFileDirectURL(fileID string) (string, error) {
+	args := m.Called(fileID)
+	return "https://api.telegram.org/file/bot/", args.Error(1)
 }
 
 func getUpdateObj(command string) tgbotapi.Update {
@@ -101,6 +107,10 @@ func TestHandleCommandStop(t *testing.T) {
 	update := getUpdateObj("/stop")
 
 	bot.On("Send", mock.Anything).Return(tgbotapi.Message{}, nil)
+
+	userData = &models.UserState{
+		CurrentState: "test",
+	}
 
 	HandleCommand(update, bot, userData, txn)
 	if len(bot.SentMessages) != 1 {
@@ -207,6 +217,7 @@ func TestHandleDocument(t *testing.T) {
 
 		bot.On("GetFile", mock.Anything).Return(tgbotapi.File{}, nil)
 		bot.On("Send", mock.Anything).Return(tgbotapi.Message{}, nil)
+		bot.On("GetFileDirectURL", mock.Anything).Return("", nil)
 
 		HandleDocument(update, bot, test_case.UserData, txn)
 

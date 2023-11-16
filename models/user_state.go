@@ -1,8 +1,6 @@
 package models
 
 type UserState struct {
-	Stage             string
-	IsAuthorized      bool
 	UserName          string
 	CurrentState      string
 	Topic             string

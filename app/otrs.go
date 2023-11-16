@@ -10,19 +10,17 @@ import (
 	"os"
 	"tg_bot/models"
 
-	"github.com/davecgh/go-spew/spew"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 )
 
 var (
-	URL       string
-	USER      string
-	PASS      string
-	Mock_OTRS string
-	QueueID   int = 3
-	TypeID    int = 3
-	// StateID       int = 1
-	// closedStateID int = 2
+	URL        string
+	USER       string
+	PASS       string
+	Mock_OTRS  string
+	stateId    int
+	QueueID    int = 3
+	TypeID     int = 3
 	PriorityID int = 3
 	OwnerID    int = 1
 	LockID     int = 1
@@ -37,7 +35,7 @@ var States = map[string]int{
 func CreateOrUpdateTicket(bot models.BotAPI, userData *models.UserState, doc *tgbotapi.Document, documentBytes *[]byte) (models.OtrsResponse, string) {
 	var ticket models.OtrsResponse
 	var path = "update"
-	var stateId int
+	var otrs_request models.OtrsRequest
 
 	template := TicketUpdatedMessage
 
@@ -45,37 +43,63 @@ func CreateOrUpdateTicket(bot models.BotAPI, userData *models.UserState, doc *tg
 		ticket = models.OtrsResponse{TicketNumber: "123"}
 		template = TicketCreatedTemplate
 	} else {
-		otrs_request := models.OtrsRequest{
-			TicketID: &userData.TicketID,
-			Article: &models.Article{
-				CommunicationChannel: "Internal",
-				SenderType:           "customer",
-				Charset:              "utf-8",
-				MimeType:             "text/plain",
-				From:                 userData.CustomerUserLogin,
-				Subject:              "Telegram message",
-				Body:                 userData.Description,
-			},
-		}
+		// otrs_request := models.OtrsRequest{
+		// 	TicketID: &userData.TicketID,
+		// 	Article: &models.Article{
+		// 		CommunicationChannel: "Internal",
+		// 		SenderType:           "customer",
+		// 		Charset:              "utf-8",
+		// 		MimeType:             "text/plain",
+		// 		From:                 userData.CustomerUserLogin,
+		// 		Subject:              "Telegram message",
+		// 		Body:                 userData.Description,
+		// 	},
+		// }
 
 		if userData.TicketID == "" { // create
 			path = "create"
 			stateId = States["new"]
-			otrs_request.Ticket = &models.Ticket{
-				Title:        &userData.Topic,
-				QueueID:      &QueueID,
-				TypeID:       &TypeID, // Request for service
-				CustomerUser: &userData.CustomerUserLogin,
-				StateID:      &stateId,    // new
-				PriorityID:   &PriorityID, // normal
-				OwnerID:      &OwnerID,    // admin
-				LockID:       &LockID,     // unlock
+			otrs_request = models.OtrsRequest{
+				Ticket: &models.Ticket{
+					Title:        &userData.Topic,
+					QueueID:      &QueueID,
+					TypeID:       &TypeID, // Request for service
+					CustomerUser: &userData.CustomerUserLogin,
+					StateID:      &stateId,    // new
+					PriorityID:   &PriorityID, // normal
+					OwnerID:      &OwnerID,    // admin
+					LockID:       &LockID,     // unlock
+				},
+				Article: &models.Article{
+					CommunicationChannel: "Internal",
+					SenderType:           "customer",
+					Charset:              "utf-8",
+					MimeType:             "text/plain",
+					From:                 userData.CustomerUserLogin,
+					Subject:              userData.Topic,
+					Body:                 userData.Description,
+				},
 			}
-			otrs_request.Article.Subject = userData.Topic
 			template = TicketCreatedTemplate
-		} else {
+		} else { //update
 			template = TicketUpdatedMessage
 			var state int
+			otrs_request = models.OtrsRequest{
+				TicketID: &userData.TicketID,
+			}
+
+			if userData.Description != "" {
+				otrs_request.Article = &models.Article{
+					CommunicationChannel: "Internal",
+					SenderType:           "customer",
+					Charset:              "utf-8",
+					MimeType:             "text/plain",
+					From:                 userData.CustomerUserLogin,
+					Subject:              "Telegram message",
+					Body:                 userData.Description,
+				}
+			}
+
 			if userData.Vote != nil {
 				if *userData.Vote != "" {
 					state = States["closed_successful"]
@@ -144,7 +168,6 @@ func otrsRequest(path string, jsonData models.OtrsRequest) (models.OtrsResponse,
 	jsonData.Password = PASS
 
 	encodedJson, err := json.Marshal(jsonData)
-	spew.Dump(encodedJson)
 	if err != nil {
 		Logger.Warn("json.Marshal:" + err.Error())
 		return responseJson, err

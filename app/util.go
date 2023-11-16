@@ -131,15 +131,20 @@ func getPendingTickets(tickets []models.TgTicket) []models.TgTicket {
 	}
 	return pendingTickets
 }
-
 func GetFileContent(doc *tgbotapi.Document, bot models.BotAPI) ([]byte, error) {
-	file, err := bot.GetFile(tgbotapi.FileConfig{FileID: doc.FileID})
+	// file, err := bot.GetFile(tgbotapi.FileConfig{FileID: doc.FileID})
 	if err != nil {
 		Logger.Warn(err)
 		return nil, err
 	}
 
-	response, err := http.Get(file.Link(""))
+	fileLink, err := bot.GetFileDirectURL(doc.FileID)
+	if err != nil {
+		Logger.Warn(err)
+		return nil, err
+	}
+
+	response, err := http.Get(fileLink)
 	if err != nil {
 		Logger.Warn(err)
 		return nil, err
@@ -149,13 +154,6 @@ func GetFileContent(doc *tgbotapi.Document, bot models.BotAPI) ([]byte, error) {
 	return io.ReadAll(response.Body)
 }
 
-func CleanUpUserData(handle string, userData *models.UserState) {
-	switch handle {
-	case "HandleDocument":
-		userData.Topic = ""
-		userData.Description = ""
-		userData.TicketID = ""
-	default:
-		userData = &models.UserState{}
-	}
+func CleanUpUserData(userData *models.UserState) {
+	*userData = models.UserState{}
 }

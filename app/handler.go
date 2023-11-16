@@ -29,7 +29,7 @@ func HandleCommand(update tgbotapi.Update, bot models.BotAPI, userData *models.U
 	case "stop":
 		msg.Text = LeaveMessage
 		bot.Send(msg)
-		CleanUpUserData("", userData)
+		CleanUpUserData(userData)
 	default:
 		msg.Text = UnknownCommand
 		bot.Send(msg)
@@ -56,10 +56,10 @@ func HandleDocument(update tgbotapi.Update, bot models.BotAPI, userData *models.
 			}
 			msg.ReplyMarkup = getInlineKeyboard(buttons)
 			bot.Send(msg)
+			CleanUpUserData(userData)
 		}
 	}
 
-	CleanUpUserData("HandleDocument", userData)
 }
 
 func HandleMessage(update tgbotapi.Update, bot models.BotAPI, userData *models.UserState, txn *newrelic.Transaction) {
@@ -118,14 +118,13 @@ func HandleCallbackQuery(update tgbotapi.Update, bot models.BotAPI, userData *mo
 		listTickets(callback, bot, userData)
 	case "add_comment":
 		userData.Action = "add_comment"
-		// listTickets(callback, bot, userData)
 		// userData.Topic = update.Message.Text
 		userData.CurrentState = "waiting_for_comment"
 		msg := tgbotapi.NewMessage(callback.Message.Chat.ID, "Введите комментарий")
 		bot.Send(msg)
 
 	case "attach_file":
-		if userData.Action != "attach_file" {
+		if userData.Action == "add_comment" || (userData.Topic != "" && userData.Description != "" && userData.Action != "attach_file") {
 			userData.Action = "attach_file"
 			attachFile(callback, bot)
 		}
@@ -149,7 +148,7 @@ func HandleCallbackQuery(update tgbotapi.Update, bot models.BotAPI, userData *mo
 				}
 				msg.ReplyMarkup = getInlineKeyboard(buttons)
 				bot.Send(msg)
-				CleanUpUserData("", userData)
+				CleanUpUserData(userData)
 			} else {
 				msg := tgbotapi.NewMessage(callback.Message.Chat.ID, NotEnoughData)
 				bot.Send(msg)
