@@ -10,25 +10,34 @@ import (
 	"os"
 	"tg_bot/models"
 
+	"github.com/davecgh/go-spew/spew"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 )
 
 var (
-	URL        string
-	USER       string
-	PASS       string
-	Mock_OTRS  string
-	QueueID    int = 3
-	TypeID     int = 3
-	StateID    int = 1
+	URL       string
+	USER      string
+	PASS      string
+	Mock_OTRS string
+	QueueID   int = 3
+	TypeID    int = 3
+	// StateID       int = 1
+	// closedStateID int = 2
 	PriorityID int = 3
 	OwnerID    int = 1
 	LockID     int = 1
 )
 
+var States = map[string]int{
+	"new":               1,
+	"open":              4,
+	"closed_successful": 2,
+}
+
 func CreateOrUpdateTicket(bot models.BotAPI, userData *models.UserState, doc *tgbotapi.Document, documentBytes *[]byte) (models.OtrsResponse, string) {
 	var ticket models.OtrsResponse
 	var path = "update"
+	var stateId int
 
 	template := TicketUpdatedMessage
 
@@ -51,12 +60,13 @@ func CreateOrUpdateTicket(bot models.BotAPI, userData *models.UserState, doc *tg
 
 		if userData.TicketID == "" { // create
 			path = "create"
+			stateId = States["new"]
 			otrs_request.Ticket = &models.Ticket{
 				Title:        &userData.Topic,
 				QueueID:      &QueueID,
 				TypeID:       &TypeID, // Request for service
 				CustomerUser: &userData.CustomerUserLogin,
-				StateID:      &StateID,    // new
+				StateID:      &stateId,    // new
 				PriorityID:   &PriorityID, // normal
 				OwnerID:      &OwnerID,    // admin
 				LockID:       &LockID,     // unlock
@@ -65,24 +75,22 @@ func CreateOrUpdateTicket(bot models.BotAPI, userData *models.UserState, doc *tg
 			template = TicketCreatedTemplate
 		} else {
 			template = TicketUpdatedMessage
+			var state int
 			if userData.Vote != nil {
 				if *userData.Vote != "" {
-					otrs_request.DynamicField = &models.DynamicField{
-						Name:  "TicketVote",
-						Value: userData.Vote,
-					}
-					closedState := 2 // closed
-					otrs_request.Ticket.StateID = &closedState
-					template = "Обращение %s оценено"
+					state = States["closed_successful"]
 				} else {
-					otrs_request.DynamicField = &models.DynamicField{
-						Name:  "TicketVote",
-						Value: userData.Vote,
-					}
-					openState := 4 // open
-					otrs_request.Ticket.StateID = &openState
-					template = "Обращение %s оценено"
+					state = States["open"]
 				}
+				otrs_request.Ticket = &models.Ticket{
+					StateID: &state,
+				}
+
+				otrs_request.DynamicField = &models.DynamicField{
+					Name:  "TicketVote",
+					Value: userData.Vote,
+				}
+				template = VoteTemplate
 			}
 		}
 
@@ -97,7 +105,7 @@ func CreateOrUpdateTicket(bot models.BotAPI, userData *models.UserState, doc *tg
 		ticket, err = otrsRequest(path, otrs_request)
 		if err != nil {
 			Logger.Warn(err)
-			return models.OtrsResponse{}, "Ошибка при создании заявки."
+			return models.OtrsResponse{}, "Ошибка при создании заявки: " + err.Error()
 		}
 	}
 
@@ -126,7 +134,7 @@ func performHttpRequest(path string, encodedJson []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	return body, nil
+	return body, err
 }
 
 func otrsRequest(path string, jsonData models.OtrsRequest) (models.OtrsResponse, error) {
@@ -136,14 +144,22 @@ func otrsRequest(path string, jsonData models.OtrsRequest) (models.OtrsResponse,
 	jsonData.Password = PASS
 
 	encodedJson, err := json.Marshal(jsonData)
+	spew.Dump(encodedJson)
 	if err != nil {
+		Logger.Warn("json.Marshal:" + err.Error())
 		return responseJson, err
 	}
 
 	response, err := performHttpRequest(path, encodedJson)
+	if err != nil {
+		Logger.Warn("performHttpRequest:" + err.Error())
+		Logger.Warn("response: ", response)
+		return responseJson, err
+	}
 
 	err = json.Unmarshal(response, &responseJson)
 	if err != nil {
+		Logger.Warn("json.Unmarshal:" + err.Error())
 		return responseJson, err
 	}
 
@@ -153,12 +169,29 @@ func otrsRequest(path string, jsonData models.OtrsRequest) (models.OtrsResponse,
 func otrsConfirm(path string, jsonData models.OtrsConfirmRequest) (models.OtrsConfirmResponse, error) {
 	var responseJson models.OtrsConfirmResponse
 
-	// if Mock_OTRS == "1" {
-	// 	return models.OtrsConfirmResponse{Sent: 1}, nil
-	// }
+	jsonData.UserLogin = USER
+	jsonData.Password = PASS
 
-	// err := performHttpRequest(path, jsonData, &responseJson)
-	return responseJson, err
+	encodedJson, err := json.Marshal(jsonData)
+	if err != nil {
+		Logger.Warn("json.Marshal:" + err.Error())
+		return responseJson, err
+	}
+
+	response, err := performHttpRequest(path, encodedJson)
+	if err != nil {
+		Logger.Warn("performHttpRequest:" + err.Error())
+		Logger.Warn("response: ", response)
+		return responseJson, err
+	}
+
+	err = json.Unmarshal(response, &responseJson)
+	if err != nil {
+		Logger.Warn("json.Unmarshal:" + err.Error())
+		return responseJson, err
+	}
+
+	return responseJson, nil
 }
 
 func SetupOTRSConnector() {

@@ -62,8 +62,8 @@ func HandleDocument(update tgbotapi.Update, bot models.BotAPI, userData *models.
 	CleanUpUserData("HandleDocument", userData)
 }
 
-func handleMessage(update tgbotapi.Update, bot *tgbotapi.BotAPI, userData *models.UserState, txn *newrelic.Transaction) {
-	Logger.Debug("handleMessage")
+func HandleMessage(update tgbotapi.Update, bot models.BotAPI, userData *models.UserState, txn *newrelic.Transaction) {
+	Logger.Debug("HandleMessage")
 	switch userData.CurrentState {
 	case "waiting_for_request_topic":
 		userData.Topic = update.Message.Text
@@ -96,8 +96,8 @@ func handleMessage(update tgbotapi.Update, bot *tgbotapi.BotAPI, userData *model
 	}
 }
 
-func handleCallbackQuery(update tgbotapi.Update, bot *tgbotapi.BotAPI, userData *models.UserState, txn *newrelic.Transaction) {
-	Logger.Debug("handleCallbackQuery: " + update.CallbackQuery.Data)
+func HandleCallbackQuery(update tgbotapi.Update, bot models.BotAPI, userData *models.UserState, txn *newrelic.Transaction) {
+	Logger.Debug("HandleCallbackQuery: " + update.CallbackQuery.Data)
 	callback := update.CallbackQuery
 
 	switch callback.Data {
@@ -133,7 +133,6 @@ func handleCallbackQuery(update tgbotapi.Update, bot *tgbotapi.BotAPI, userData 
 		create(callback, bot, userData)
 	default:
 		if ticketRegex.MatchString(callback.Data) {
-			// userData.TicketID, _ = strconv.Atoi(callback.Data)
 			userData.TicketID = callback.Data
 			preview_ticket(callback, bot, userData)
 		} else if voteRegex.MatchString(callback.Data) {
@@ -142,14 +141,19 @@ func handleCallbackQuery(update tgbotapi.Update, bot *tgbotapi.BotAPI, userData 
 
 			userData.Vote = &match[1]
 
-			_, text := CreateOrUpdateTicket(bot, userData, nil, nil)
-			msg := tgbotapi.NewMessage(callback.Message.Chat.ID, text)
-			buttons := []models.Button{
-				{Title: "Назад", Callback: "start"},
+			if userData.TicketID != "" {
+				_, text := CreateOrUpdateTicket(bot, userData, nil, nil)
+				msg := tgbotapi.NewMessage(callback.Message.Chat.ID, text)
+				buttons := []models.Button{
+					{Title: "Назад", Callback: "start"},
+				}
+				msg.ReplyMarkup = getInlineKeyboard(buttons)
+				bot.Send(msg)
+				CleanUpUserData("", userData)
+			} else {
+				msg := tgbotapi.NewMessage(callback.Message.Chat.ID, NotEnoughData)
+				bot.Send(msg)
 			}
-			msg.ReplyMarkup = getInlineKeyboard(buttons)
-			bot.Send(msg)
-			CleanUpUserData("", userData)
 		}
 	}
 }
@@ -164,10 +168,10 @@ func HandleUpdate(update tgbotapi.Update, bot *tgbotapi.BotAPI, userData *models
 		} else if update.Message.Document != nil {
 			HandleDocument(update, bot, userData, txn)
 		} else {
-			handleMessage(update, bot, userData, txn)
+			HandleMessage(update, bot, userData, txn)
 		}
 	} else if update.CallbackQuery != nil {
-		handleCallbackQuery(update, bot, userData, txn)
+		HandleCallbackQuery(update, bot, userData, txn)
 	}
 }
 

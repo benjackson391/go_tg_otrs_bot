@@ -24,23 +24,21 @@ func addCheckStatusButton(buttons []models.Button, title string, number int, cal
 	return buttons
 }
 
-func start(callback *tgbotapi.CallbackQuery, bot *tgbotapi.BotAPI) {
+func start(callback *tgbotapi.CallbackQuery, bot models.BotAPI) {
 	Logger.Debug("start")
-	msg := tgbotapi.NewMessage(callback.Message.Chat.ID, "")
-	msg.Text = "\n\nВы можете создать, обновить или проверить статус вашей заявки. Для остановки бота просто напишите /stop, для повторного запуска нажмите /start"
-
+	msg := tgbotapi.NewMessage(callback.Message.Chat.ID, WelcomeDescription)
 	msg.ReplyMarkup = GetInitialKeyboard()
 	bot.Send(msg)
 }
 
-func newRequest(callback *tgbotapi.CallbackQuery, bot *tgbotapi.BotAPI, userData *models.UserState) {
+func newRequest(callback *tgbotapi.CallbackQuery, bot models.BotAPI, userData *models.UserState) {
 	Logger.Debug("newRequest")
 	msg := tgbotapi.NewMessage(callback.Message.Chat.ID, "Введите тему заявки")
 	bot.Send(msg)
 	userData.CurrentState = "waiting_for_request_topic"
 }
 
-func checkStatus(callback *tgbotapi.CallbackQuery, bot *tgbotapi.BotAPI, userData *models.UserState) {
+func checkStatus(callback *tgbotapi.CallbackQuery, bot models.BotAPI, userData *models.UserState) {
 	Logger.Debug("checkStatus")
 	state_type_count := getStateTypeCount(userData.CustomerUserLogin)
 
@@ -57,7 +55,7 @@ func checkStatus(callback *tgbotapi.CallbackQuery, bot *tgbotapi.BotAPI, userDat
 	bot.Send(msg)
 }
 
-func listTickets(callback *tgbotapi.CallbackQuery, bot *tgbotapi.BotAPI, userData *models.UserState) {
+func listTickets(callback *tgbotapi.CallbackQuery, bot models.BotAPI, userData *models.UserState) {
 	Logger.Debug("listTickets")
 
 	tickets := getTickets(userData.UserName)
@@ -83,7 +81,7 @@ func listTickets(callback *tgbotapi.CallbackQuery, bot *tgbotapi.BotAPI, userDat
 	bot.Send(msg)
 }
 
-func attachFile(callback *tgbotapi.CallbackQuery, bot *tgbotapi.BotAPI) {
+func attachFile(callback *tgbotapi.CallbackQuery, bot models.BotAPI) {
 	msg := tgbotapi.NewMessage(callback.Message.Chat.ID, "Приложите файл до 20Mb")
 	inlineKeyboard := tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(
@@ -94,7 +92,7 @@ func attachFile(callback *tgbotapi.CallbackQuery, bot *tgbotapi.BotAPI) {
 	bot.Send(msg)
 }
 
-func create(callback *tgbotapi.CallbackQuery, bot *tgbotapi.BotAPI, userData *models.UserState) {
+func create(callback *tgbotapi.CallbackQuery, bot models.BotAPI, userData *models.UserState) {
 	Logger.Debug("create")
 
 	if userData.Description == "" {
@@ -112,7 +110,7 @@ func create(callback *tgbotapi.CallbackQuery, bot *tgbotapi.BotAPI, userData *mo
 	CleanUpUserData("", userData)
 }
 
-func preview_ticket(callback *tgbotapi.CallbackQuery, bot *tgbotapi.BotAPI, userData *models.UserState) {
+func preview_ticket(callback *tgbotapi.CallbackQuery, bot models.BotAPI, userData *models.UserState) {
 	Logger.Debug("preview_ticket")
 	var ticket models.TgTicket
 
