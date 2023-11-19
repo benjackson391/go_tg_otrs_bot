@@ -155,5 +155,8 @@ func GetFileContent(doc *tgbotapi.Document, bot models.BotAPI) ([]byte, error) {
 }
 
 func CleanUpUserData(userData *models.UserState) {
-	*userData = models.UserState{}
+	*userData = models.UserState{
+		UserName:          userData.UserName,
+		CustomerUserLogin: userData.CustomerUserLogin,
+	}
 }

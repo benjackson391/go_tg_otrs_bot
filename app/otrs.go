@@ -43,19 +43,6 @@ func CreateOrUpdateTicket(bot models.BotAPI, userData *models.UserState, doc *tg
 		ticket = models.OtrsResponse{TicketNumber: "123"}
 		template = TicketCreatedTemplate
 	} else {
-		// otrs_request := models.OtrsRequest{
-		// 	TicketID: &userData.TicketID,
-		// 	Article: &models.Article{
-		// 		CommunicationChannel: "Internal",
-		// 		SenderType:           "customer",
-		// 		Charset:              "utf-8",
-		// 		MimeType:             "text/plain",
-		// 		From:                 userData.CustomerUserLogin,
-		// 		Subject:              "Telegram message",
-		// 		Body:                 userData.Description,
-		// 	},
-		// }
-
 		if userData.TicketID == "" { // create
 			path = "create"
 			stateId = States["new"]

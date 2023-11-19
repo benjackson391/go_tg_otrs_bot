@@ -14,7 +14,7 @@ package main
 // 2.3 update_request
 
 import (
-	"context"
+	"golang.org/x/net/context"
 	"os"
 	"sync"
 

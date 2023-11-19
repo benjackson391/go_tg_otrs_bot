@@ -1,5 +1,7 @@
 package models
 
+import "time"
+
 type StateTypeCount struct {
 	CountPendAuto int
 	CountOpen     int
@@ -69,4 +71,33 @@ type OtrsConfirmResponse struct {
 	Data      map[string]string `json:"data"`
 	Sent      int               `json:"sent"`
 	UserLogin string            `json:"user_login"`
+}
+
+// database
+type DbTicket struct {
+	ID                     uint `gorm:"primaryKey"`
+	Tn                     string
+	Title                  string
+	QueueID                int
+	TicketLockID           int
+	TypeID                 int
+	ServiceID              int
+	SlaID                  int
+	UserID                 int
+	ResponsibleUserID      int
+	TicketPriorityID       int
+	TicketStateID          int
+	CustomerID             string
+	CustomerUserID         string
+	Timeout                int
+	UntilTime              int
+	EscalationTime         int
+	EscalationUpdateTime   int
+	EscalationResponseTime int
+	EscalationSolutionTime int
+	ArchiveFlag            int
+	CreateTime             time.Time
+	CreateBy               int
+	ChangeTime             time.Time
+	ChangeBy               int
 }
