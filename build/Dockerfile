@@ -1,7 +1,7 @@
 FROM golang:latest
 WORKDIR /app
 COPY . .
-RUN go build -o gotgbot
+RUN go build -o gotgbot cmd/app/main.go
 
 ENV GODEBUG="gctrace=1"
 ENV GOMAXPROCS=10

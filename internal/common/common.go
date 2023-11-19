@@ -10,6 +10,7 @@ import (
 	"tg_bot/internal/models"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 )
 
@@ -130,24 +131,25 @@ func GetPendingTickets(tickets []models.TgTicket) []models.TgTicket {
 	return pendingTickets
 }
 func GetFileContent(doc *tgbotapi.Document, bot models.BotAPI) ([]byte, error) {
-	// file, err := bot.GetFile(tgbotapi.FileConfig{FileID: doc.FileID})
-	// if err != nil {
-	// 	logger.Warning(err.Error())
-	// 	return nil, err
-	// }
-
 	fileLink, err := bot.GetFileDirectURL(doc.FileID)
+
 	if err != nil {
 		logger.Warning(err.Error())
 		return nil, err
 	}
 
 	response, err := http.Get(fileLink)
+	spew.Dump(response)
 	if err != nil {
 		logger.Warning(err.Error())
 		return nil, err
 	}
+
 	defer response.Body.Close()
+
+	if response.StatusCode != 200 {
+		return nil, fmt.Errorf("Bad return code: %d", response.StatusCode)
+	}
 
 	return io.ReadAll(response.Body)
 }

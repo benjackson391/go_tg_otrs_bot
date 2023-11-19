@@ -7,22 +7,39 @@ on:
     branches: [ main ]
 
 jobs:
+  # prepare:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #   - name: Checkout Repository
+  #     uses: actions/checkout@v4
+
+  #   - name: Set up Go
+  #     uses: actions/setup-go@v4
+  #     with:
+  #       go-version: '1.21.4'
+
+  #   - name: Generate DAO Code
+  #     run: go mod download && go run ./scripts/gen.go
+
   test:
     name: Test
-    runs-on: self-hosted
+    # needs: prepare
+    # runs-on: self-hosted
+    runs-on: ubuntu-latest
     steps:
     - name: Set up Go
       uses: actions/setup-go@v2
       with:
         go-version: '1.21.4'
     - name: Check out code
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
     - name: Test
       run: go test -v ./...
   coverage:
     name: Coverage
     needs: test
-    runs-on: self-hosted
+    # runs-on: self-hosted
+    runs-on: ubuntu-latest
     steps:
     - name: Set up Go
       uses: actions/setup-go@v2
@@ -30,7 +47,7 @@ jobs:
         go-version: '1.21.4'
 
     - name: Check out code
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
 
     - name: Test with Coverage
       run: go test -v -coverprofile=coverage.out ./...
@@ -47,17 +64,18 @@ jobs:
   docker:
     name: Docker puch
     needs: test
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
+    # runs-on: self-hosted
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Login to Docker Hub
         run: echo ${{ secrets.DOCKER_PASSWORD }} | docker login --username ${{ secrets.DOCKER_USERNAME }} --password-stdin
 
       - name: Build Docker image
-        run: docker build -t ilyaksyonov/gotgbot:latest .
+        run: docker build -t ilyaksyonov/gotgbot:latest -f ./build/Dockerfile .
 
       - name: Push Docker image
         run: docker push ilyaksyonov/gotgbot:latest

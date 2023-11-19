@@ -2,6 +2,7 @@ package app
 
 import (
 	"os"
+	"runtime/pprof"
 	"sync"
 
 	"tg_bot/internal/database"
@@ -28,6 +29,27 @@ func setupBotAPI() *tgbotapi.BotAPI {
 }
 
 func run(bot *tgbotapi.BotAPI) {
+	cpuFile, err := os.Create("cpu.prof")
+	if err != nil {
+		panic(err)
+	}
+	defer cpuFile.Close()
+
+	// Запуск профилирования CPU
+	if err := pprof.StartCPUProfile(cpuFile); err != nil {
+		panic(err)
+	}
+	defer pprof.StopCPUProfile()
+
+	memFile, err := os.Create("mem.prof")
+	if err != nil {
+		panic(err)
+	}
+	defer memFile.Close()
+	if err := pprof.WriteHeapProfile(memFile); err != nil {
+		panic(err)
+	}
+
 	appNR, err := newrelic.NewApplication(
 		newrelic.ConfigAppName("tg_bot"),
 		newrelic.ConfigLicense(os.Getenv("NEWRELIC")),

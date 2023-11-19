@@ -1,5 +1,5 @@
 .air.toml
 .env
 .vscode/*
-internal/database/model
-internal/database/dal
+# internal/database/model
+# internal/database/dal
