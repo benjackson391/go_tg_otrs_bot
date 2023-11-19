@@ -1,11 +1,13 @@
-package app
+package common
 
 import (
 	"fmt"
 	"io"
 	"math/rand"
 	"net/http"
-	"tg_bot/models"
+	"sync"
+	"tg_bot/internal/logger"
+	"tg_bot/internal/models"
 	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
@@ -20,7 +22,9 @@ var TRANSLATION = map[string]string{
 	"pending auto close-": "ожидает автозакрытия(-)",
 }
 
-func getUserName(update tgbotapi.Update) string {
+var userStates sync.Map
+
+func GetUserName(update tgbotapi.Update) string {
 	if update.Message != nil {
 		return update.Message.From.UserName
 	} else if update.CallbackQuery != nil {
@@ -29,7 +33,7 @@ func getUserName(update tgbotapi.Update) string {
 	return ""
 }
 
-func getUserID(update tgbotapi.Update) int {
+func GetUserID(update tgbotapi.Update) int {
 	if update.Message != nil {
 		return update.Message.From.ID
 	} else if update.CallbackQuery != nil {
@@ -38,18 +42,12 @@ func getUserID(update tgbotapi.Update) int {
 	return 0
 }
 
-func getUserData(userID int, userName string) models.UserState {
+func GetUserData(userID int, userName string) models.UserState {
 	userData, ok := userStates.Load(userID)
 	if ok {
 		return userData.(models.UserState)
 	}
 	return models.UserState{UserName: userName}
-}
-
-func InitAPI(url string, user string, pass string) {
-	URL = url
-	USER = user
-	PASS = pass
 }
 
 func Translate(status string) string {
@@ -60,13 +58,13 @@ func Translate(status string) string {
 	return translated_status
 }
 
-func generateSixDigitNumber() int {
+func GenerateSixDigitNumber() int {
 	rand.Seed(time.Now().UnixNano())
 
 	return rand.Intn(900000) + 100000
 }
 
-func getInlineKeyboard(buttons []models.Button) tgbotapi.InlineKeyboardMarkup {
+func GetInlineKeyboard(buttons []models.Button) tgbotapi.InlineKeyboardMarkup {
 	var rows [][]tgbotapi.InlineKeyboardButton
 
 	for _, button := range buttons {
@@ -80,7 +78,7 @@ func getInlineKeyboard(buttons []models.Button) tgbotapi.InlineKeyboardMarkup {
 	return inlineKeyboard
 }
 
-func convertTicketsToButtons(tickets []models.TgTicket) []models.Button {
+func ConvertTicketsToButtons(tickets []models.TgTicket) []models.Button {
 	var buttons []models.Button // создаем массив пар строк
 
 	for _, ticket := range tickets {
@@ -108,11 +106,11 @@ func GetInitialKeyboard() *tgbotapi.InlineKeyboardMarkup {
 		},
 	}
 
-	keyboard := getInlineKeyboard(buttons)
+	keyboard := GetInlineKeyboard(buttons)
 	return &keyboard
 }
 
-func getOpenTickets(tickets []models.TgTicket) []models.TgTicket {
+func GetOpenTickets(tickets []models.TgTicket) []models.TgTicket {
 	var openTickets []models.TgTicket
 	for _, ticket := range tickets {
 		if ticket.StateType != "pending auto" {
@@ -122,7 +120,7 @@ func getOpenTickets(tickets []models.TgTicket) []models.TgTicket {
 	return openTickets
 }
 
-func getPendingTickets(tickets []models.TgTicket) []models.TgTicket {
+func GetPendingTickets(tickets []models.TgTicket) []models.TgTicket {
 	var pendingTickets []models.TgTicket
 	for _, ticket := range tickets {
 		if ticket.StateType == "pending auto" {
@@ -133,20 +131,20 @@ func getPendingTickets(tickets []models.TgTicket) []models.TgTicket {
 }
 func GetFileContent(doc *tgbotapi.Document, bot models.BotAPI) ([]byte, error) {
 	// file, err := bot.GetFile(tgbotapi.FileConfig{FileID: doc.FileID})
-	if err != nil {
-		Logger.Warn(err)
-		return nil, err
-	}
+	// if err != nil {
+	// 	logger.Warning(err.Error())
+	// 	return nil, err
+	// }
 
 	fileLink, err := bot.GetFileDirectURL(doc.FileID)
 	if err != nil {
-		Logger.Warn(err)
+		logger.Warning(err.Error())
 		return nil, err
 	}
 
 	response, err := http.Get(fileLink)
 	if err != nil {
-		Logger.Warn(err)
+		logger.Warning(err.Error())
 		return nil, err
 	}
 	defer response.Body.Close()

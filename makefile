@@ -2,7 +2,7 @@ IMAGE_NAME = ilyaksyonov/gotgbot:latest
 CONTAINER_NAME = gotgbot
 ENV_FILE = /opt/go_tg_bot/.env
 
-DOCKERFILE_PATH = ./Dockerfile
+DOCKERFILE_PATH = ./build/Dockerfile
 
 build:
 	docker build -t $(IMAGE_NAME) -f $(DOCKERFILE_PATH) .

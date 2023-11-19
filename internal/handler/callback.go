@@ -1,8 +1,13 @@
-package app
+package handler
 
 import (
 	"fmt"
-	"tg_bot/models"
+	"tg_bot/config"
+	"tg_bot/internal/common"
+	"tg_bot/internal/database"
+	"tg_bot/internal/logger"
+	"tg_bot/internal/models"
+	"tg_bot/internal/otrs"
 	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
@@ -17,6 +22,67 @@ var (
 	update_callback  = "update_request"
 )
 
+func HandleCallbackQuery(update tgbotapi.Update, bot models.BotAPI, userData *models.UserState) {
+	logger.Debug("HandleCallbackQuery: " + update.CallbackQuery.Data)
+	callback := update.CallbackQuery
+
+	switch callback.Data {
+	case "start":
+		start(callback, bot)
+	case "new_request":
+		newRequest(callback, bot, userData)
+	case "check_status":
+		checkStatus(callback, bot, userData)
+	case "show_open":
+		userData.Action = "show_open"
+		listTickets(callback, bot, userData)
+	case "show_pending":
+		userData.Action = "show_pending"
+		listTickets(callback, bot, userData)
+	case "update_request":
+		userData.Action = "update_request"
+		listTickets(callback, bot, userData)
+	case "add_comment":
+		userData.Action = "add_comment"
+		// userData.Topic = update.Message.Text
+		userData.CurrentState = "waiting_for_comment"
+		msg := tgbotapi.NewMessage(callback.Message.Chat.ID, "Введите комментарий")
+		bot.Send(msg)
+
+	case "attach_file":
+		if userData.Action == "add_comment" || (userData.Topic != "" && userData.Description != "" && userData.Action != "attach_file") {
+			userData.Action = "attach_file"
+			attachFile(callback, bot)
+		}
+	case "create":
+		create(callback, bot, userData)
+	default:
+		if ticketRegex.MatchString(callback.Data) {
+			userData.TicketID = callback.Data
+			preview_ticket(callback, bot, userData)
+		} else if voteRegex.MatchString(callback.Data) {
+			logger.Debug("default:is_vote")
+			match := voteRegex.FindStringSubmatch(callback.Data)
+
+			userData.Vote = &match[1]
+
+			if userData.TicketID != "" {
+				_, text := otrs.CreateOrUpdateTicket(bot, userData, nil, nil)
+				msg := tgbotapi.NewMessage(callback.Message.Chat.ID, text)
+				buttons := []models.Button{
+					{Title: "Назад", Callback: "start"},
+				}
+				msg.ReplyMarkup = common.GetInlineKeyboard(buttons)
+				bot.Send(msg)
+				common.CleanUpUserData(userData)
+			} else {
+				msg := tgbotapi.NewMessage(callback.Message.Chat.ID, config.NotEnoughData)
+				bot.Send(msg)
+			}
+		}
+	}
+}
+
 func addCheckStatusButton(buttons []models.Button, title string, number int, callback string) []models.Button {
 	if number > 0 {
 		buttons = append(buttons, models.Button{Title: fmt.Sprintf("%s (%d)", title, number), Callback: callback})
@@ -25,22 +91,22 @@ func addCheckStatusButton(buttons []models.Button, title string, number int, cal
 }
 
 func start(callback *tgbotapi.CallbackQuery, bot models.BotAPI) {
-	Logger.Debug("start")
-	msg := tgbotapi.NewMessage(callback.Message.Chat.ID, WelcomeDescription)
-	msg.ReplyMarkup = GetInitialKeyboard()
+	logger.Debug("start")
+	msg := tgbotapi.NewMessage(callback.Message.Chat.ID, config.WelcomeDescription)
+	msg.ReplyMarkup = common.GetInitialKeyboard()
 	bot.Send(msg)
 }
 
 func newRequest(callback *tgbotapi.CallbackQuery, bot models.BotAPI, userData *models.UserState) {
-	Logger.Debug("newRequest")
+	logger.Debug("newRequest")
 	msg := tgbotapi.NewMessage(callback.Message.Chat.ID, "Введите тему заявки")
 	bot.Send(msg)
 	userData.CurrentState = "waiting_for_request_topic"
 }
 
 func checkStatus(callback *tgbotapi.CallbackQuery, bot models.BotAPI, userData *models.UserState) {
-	Logger.Debug("checkStatus")
-	state_type_count := getStateTypeCount(userData.CustomerUserLogin)
+	logger.Debug("checkStatus")
+	state_type_count := database.GetStateTypeCount(userData.CustomerUserLogin)
 
 	buttons := []models.Button{}
 	buttons = addCheckStatusButton(buttons, open_title, state_type_count.CountOpen, open_callback)
@@ -50,24 +116,24 @@ func checkStatus(callback *tgbotapi.CallbackQuery, bot models.BotAPI, userData *
 	msg.Text = "Нет открытых заявок"
 	if state_type_count.CountOpen > 0 || state_type_count.CountPendAuto > 0 {
 		msg.Text = "Выберите"
-		msg.ReplyMarkup = getInlineKeyboard(buttons)
+		msg.ReplyMarkup = common.GetInlineKeyboard(buttons)
 	}
 	bot.Send(msg)
 }
 
 func listTickets(callback *tgbotapi.CallbackQuery, bot models.BotAPI, userData *models.UserState) {
-	Logger.Debug("listTickets")
+	logger.Debug("listTickets")
 
-	tickets := getTickets(userData.UserName)
+	tickets := database.GetTickets(userData.UserName)
 
 	var title string
 	switch userData.Action {
 	case "show_open":
 		title = open_title
-		tickets = getOpenTickets(tickets)
+		tickets = common.GetOpenTickets(tickets)
 	case "show_pending":
 		title = pending_title
-		tickets = getPendingTickets(tickets)
+		tickets = common.GetPendingTickets(tickets)
 	case "update_request":
 		title = update_title
 	default:
@@ -75,9 +141,9 @@ func listTickets(callback *tgbotapi.CallbackQuery, bot models.BotAPI, userData *
 	}
 
 	msg := tgbotapi.NewMessage(callback.Message.Chat.ID, title)
-	buttons := convertTicketsToButtons(tickets)
+	buttons := common.ConvertTicketsToButtons(tickets)
 	buttons = append(buttons, models.Button{Title: "Назад", Callback: "start"})
-	msg.ReplyMarkup = getInlineKeyboard(buttons)
+	msg.ReplyMarkup = common.GetInlineKeyboard(buttons)
 	bot.Send(msg)
 }
 
@@ -93,28 +159,26 @@ func attachFile(callback *tgbotapi.CallbackQuery, bot models.BotAPI) {
 }
 
 func create(callback *tgbotapi.CallbackQuery, bot models.BotAPI, userData *models.UserState) {
-	Logger.Debug("create")
+	logger.Debug("create")
 
 	if userData.Description == "" {
 		return
 	}
 
-	_, text := CreateOrUpdateTicket(bot, userData, nil, nil)
+	_, text := otrs.CreateOrUpdateTicket(bot, userData, nil, nil)
 	msg := tgbotapi.NewMessage(callback.Message.Chat.ID, text)
 	buttons := []models.Button{
 		{Title: "Назад", Callback: "start"},
 	}
-	msg.ReplyMarkup = getInlineKeyboard(buttons)
+	msg.ReplyMarkup = common.GetInlineKeyboard(buttons)
 	bot.Send(msg)
 
-	CleanUpUserData(userData)
+	common.CleanUpUserData(userData)
 }
 
 func preview_ticket(callback *tgbotapi.CallbackQuery, bot models.BotAPI, userData *models.UserState) {
-	Logger.Debug("preview_ticket")
-	var ticket models.TgTicket
-
-	db.First(&ticket, "TicketID = ?", callback.Data)
+	logger.Debug("preview_ticket")
+	ticket := database.GetTicket(callback.Data)
 
 	var formattedTime string
 	if ticket.SolutionTimeDestinationDate > 0 {
@@ -126,7 +190,7 @@ func preview_ticket(callback *tgbotapi.CallbackQuery, bot models.BotAPI, userDat
 		ticket.Type,
 		ticket.UserFirstname,
 		ticket.UserLastname,
-		Translate(ticket.State),
+		common.Translate(ticket.State),
 		formattedTime,
 		*ticket.Body,
 	)
@@ -156,6 +220,6 @@ func preview_ticket(callback *tgbotapi.CallbackQuery, bot models.BotAPI, userDat
 		buttons = append(update_buttons, buttons...)
 	}
 
-	msg.ReplyMarkup = getInlineKeyboard(buttons)
+	msg.ReplyMarkup = common.GetInlineKeyboard(buttons)
 	bot.Send(msg)
 }

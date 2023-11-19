@@ -1,12 +1,10 @@
-package app
+package handler
 
 import (
 	"fmt"
-	"os"
 	"testing"
-	"tg_bot/models"
-
-	"github.com/withmandala/go-log"
+	"tg_bot/config"
+	"tg_bot/internal/models"
 
 	"github.com/jarcoal/httpmock"
 
@@ -67,14 +65,13 @@ func getUpdateObj(command string) tgbotapi.Update {
 }
 
 func TestHandleCommandStart(t *testing.T) {
-	InitLogger(log.New(os.Stderr).WithColor().WithDebug())
 	bot := new(MockBotAPI)
 
 	update := getUpdateObj("/start")
 
 	bot.On("Send", mock.Anything).Return(tgbotapi.Message{}, nil)
 
-	HandleCommand(update, bot, userData, txn)
+	HandleCommand(update, bot, userData)
 	if len(bot.SentMessages) != 1 {
 		t.Errorf("Expected one message to be sent for start command, got: %v", len(bot.SentMessages))
 	} else {
@@ -82,7 +79,7 @@ func TestHandleCommandStart(t *testing.T) {
 		if !ok {
 			t.Errorf("Expected message to be of type tgbotapi.MessageConfig")
 		} else {
-			assert.Equal(t, WelcomeMessage+"\n\n"+WelcomeDescription, answer.Text, "Text should be equal")
+			assert.Equal(t, config.WelcomeMessage+"\n\n"+config.WelcomeDescription, answer.Text, "Text should be equal")
 
 			expectedKeyboard := tgbotapi.NewInlineKeyboardMarkup(
 				tgbotapi.NewInlineKeyboardRow(
@@ -101,7 +98,6 @@ func TestHandleCommandStart(t *testing.T) {
 }
 
 func TestHandleCommandStop(t *testing.T) {
-	InitLogger(log.New(os.Stderr).WithColor().WithDebug())
 	bot := new(MockBotAPI)
 
 	update := getUpdateObj("/stop")
@@ -112,7 +108,7 @@ func TestHandleCommandStop(t *testing.T) {
 		CurrentState: "test",
 	}
 
-	HandleCommand(update, bot, userData, txn)
+	HandleCommand(update, bot, userData)
 	if len(bot.SentMessages) != 1 {
 		t.Errorf("Expected one message to be sent for start command, got: %v", len(bot.SentMessages))
 	} else {
@@ -120,20 +116,19 @@ func TestHandleCommandStop(t *testing.T) {
 		if !ok {
 			t.Errorf("Expected message to be of type tgbotapi.MessageConfig")
 		} else {
-			assert.Equal(t, LeaveMessage, answer.Text, "Text should be equal")
+			assert.Equal(t, config.LeaveMessage, answer.Text, "Text should be equal")
 		}
 	}
 }
 
 func TestHandleCommandDefault(t *testing.T) {
-	InitLogger(log.New(os.Stderr).WithColor().WithDebug())
 	bot := new(MockBotAPI)
 
 	update := getUpdateObj("/unknown")
 
 	bot.On("Send", mock.Anything).Return(tgbotapi.Message{}, nil)
 
-	HandleCommand(update, bot, userData, txn)
+	HandleCommand(update, bot, userData)
 	if len(bot.SentMessages) != 1 {
 		t.Errorf("Expected one message to be sent for start command, got: %v", len(bot.SentMessages))
 	} else {
@@ -141,13 +136,12 @@ func TestHandleCommandDefault(t *testing.T) {
 		if !ok {
 			t.Errorf("Expected message to be of type tgbotapi.MessageConfig")
 		} else {
-			assert.Equal(t, UnknownCommand, answer.Text, "Text should be equal")
+			assert.Equal(t, config.UnknownCommand, answer.Text, "Text should be equal")
 		}
 	}
 }
 
 func TestHandleDocument(t *testing.T) {
-	InitLogger(log.New(os.Stderr).WithColor().WithDebug())
 	bot := new(MockBotAPI)
 
 	csenario := []struct {
@@ -160,7 +154,7 @@ func TestHandleDocument(t *testing.T) {
 	}{
 		{
 			UserData:     &models.UserState{TicketID: ""},
-			FileSize:     FileSizeLimit + FileSizeLimit*0.5,
+			FileSize:     config.FileSizeLimit + config.FileSizeLimit*0.5,
 			OtrsPath:     "/create",
 			OtrsResponse: "",
 			Code:         200,
@@ -168,25 +162,25 @@ func TestHandleDocument(t *testing.T) {
 		},
 		{
 			UserData:     &models.UserState{TicketID: ""},
-			FileSize:     FileSizeLimit,
+			FileSize:     config.FileSizeLimit,
 			OtrsPath:     "/create",
 			OtrsResponse: `{"ArticleID":"1","TicketID":"1","TicketNumber":"1"}`,
 			Code:         200,
-			AnswerText:   fmt.Sprintf(TicketCreatedTemplate, "1"),
+			AnswerText:   fmt.Sprintf(config.TicketCreatedTemplate, "1"),
 		},
 		{
 			UserData:     &models.UserState{TicketID: ""},
-			FileSize:     FileSizeLimit * 0.5,
+			FileSize:     config.FileSizeLimit * 0.5,
 			OtrsPath:     "/create",
 			OtrsResponse: `{"ArticleID":"1","TicketID":"2","TicketNumber":"2"}`,
-			AnswerText:   fmt.Sprintf(TicketCreatedTemplate, "2"),
+			AnswerText:   fmt.Sprintf(config.TicketCreatedTemplate, "2"),
 		},
 		{
 			UserData:     &models.UserState{TicketID: "1"},
-			FileSize:     FileSizeLimit * 0.5,
+			FileSize:     config.FileSizeLimit * 0.5,
 			OtrsPath:     "/update",
 			OtrsResponse: `{"ArticleID":"1","TicketID":"2","TicketNumber":"3"}`,
-			AnswerText:   fmt.Sprintf(TicketUpdatedMessage, "3"),
+			AnswerText:   fmt.Sprintf(config.TicketUpdatedMessage, "3"),
 		},
 	}
 
@@ -219,7 +213,7 @@ func TestHandleDocument(t *testing.T) {
 		bot.On("Send", mock.Anything).Return(tgbotapi.Message{}, nil)
 		bot.On("GetFileDirectURL", mock.Anything).Return("", nil)
 
-		HandleDocument(update, bot, test_case.UserData, txn)
+		HandleDocument(update, bot, test_case.UserData)
 
 		if len(bot.SentMessages) != 1 {
 			t.Errorf("[%d] Expected one message to be sent for start command, got: %v", test_number, len(bot.SentMessages))
@@ -240,7 +234,6 @@ func TestHandleMessage(t *testing.T) {
 }
 
 func TestHandleCallbackQuery(t *testing.T) {
-	InitLogger(log.New(os.Stderr).WithColor().WithDebug())
 	bot := new(MockBotAPI)
 
 	csenario := []struct {
@@ -251,7 +244,7 @@ func TestHandleCallbackQuery(t *testing.T) {
 		{
 			UserData:     &models.UserState{},
 			CallbackData: "start",
-			AnswerText:   WelcomeDescription,
+			AnswerText:   config.WelcomeDescription,
 		},
 		{
 			UserData:     &models.UserState{},
@@ -315,7 +308,7 @@ func TestHandleCallbackQuery(t *testing.T) {
 			httpmock.NewStringResponder(200, `{"ArticleID":"1","TicketID":"1","TicketNumber":"1"}`))
 
 		bot.On("Send", mock.Anything).Return(tgbotapi.Message{}, nil)
-		HandleCallbackQuery(update, bot, test_case.UserData, txn)
+		HandleCallbackQuery(update, bot, test_case.UserData)
 
 		if len(bot.SentMessages) != 1 {
 			t.Errorf("[%d] Expected one message to be sent for start command, got: %v", test_number, len(bot.SentMessages))

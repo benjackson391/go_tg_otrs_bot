@@ -1,4 +1,4 @@
-package app
+package config
 
 const (
 	WelcomeMessage        = "Добро пожаловать в систему постановки заявок EFSOL"
