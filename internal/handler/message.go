@@ -14,25 +14,57 @@ import (
 
 func HandleMessage(update tgbotapi.Update, bot models.BotAPI, userData *models.UserState) {
 	logger.Debug("message.HandleMessage")
-	switch userData.CurrentState {
-	case "waiting_for_request_topic":
-		userData.Topic = update.Message.Text
-		userData.CurrentState = "waiting_for_comment"
-		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Введите описание заявки")
-		bot.Send(msg)
 
-	case "waiting_for_comment":
-		userData.Description = update.Message.Text
-		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Прикрепить файл?")
-		inlineKeyboard := tgbotapi.NewInlineKeyboardMarkup(
-			tgbotapi.NewInlineKeyboardRow(
-				tgbotapi.NewInlineKeyboardButtonData("Да", "attach_file"),
-				tgbotapi.NewInlineKeyboardButtonData("Нет", "create"),
-			),
-		)
-		msg.ReplyMarkup = inlineKeyboard
+	if isMediaMessage(update.Message) {
+		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Некорректное вложение, приложите Файл")
 		bot.Send(msg)
+	} else if update.Message.Document != nil {
+		HandleDocument(update, bot, userData)
+	} else {
+		switch userData.CurrentState {
+		case "waiting_for_request_topic":
+			userData.Topic = update.Message.Text
+			userData.CurrentState = "waiting_for_comment"
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Введите описание заявки")
+			bot.Send(msg)
+
+		case "waiting_for_comment":
+			userData.Description = update.Message.Text
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Прикрепить файл?")
+			inlineKeyboard := tgbotapi.NewInlineKeyboardMarkup(
+				tgbotapi.NewInlineKeyboardRow(
+					tgbotapi.NewInlineKeyboardButtonData("Да", "attach_file"),
+					tgbotapi.NewInlineKeyboardButtonData("Нет", "create"),
+				),
+			)
+			msg.ReplyMarkup = inlineKeyboard
+			bot.Send(msg)
+		}
 	}
+}
+
+func HandleDocument(update tgbotapi.Update, bot models.BotAPI, userData *models.UserState) {
+	logger.Debug("document.HandleDocument")
+	doc := update.Message.Document
+
+	if doc.FileSize > config.FileSizeLimit {
+		bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, config.BigFileMessage))
+	} else {
+		documentBytes, err := common.GetFileContent(doc.FileID, bot)
+		if err != nil {
+			bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, config.ErrorMsq1))
+		} else {
+			_, text := otrs.CreateOrUpdateTicket(bot, userData, doc, &documentBytes)
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, text)
+			buttons := []models.Button{
+				{Title: "Назад", Callback: "start"},
+			}
+			msg.ReplyMarkup = common.GetInlineKeyboard(buttons)
+			bot.Send(msg)
+			common.CleanUpUserData(userData)
+		}
+	}
+
 }
 
 func handleAuthoriseMessage(update tgbotapi.Update, bot models.BotAPI, userData *models.UserState) {
@@ -88,4 +120,18 @@ func handleAuthoriseMessage(update tgbotapi.Update, bot models.BotAPI, userData 
 		userData.CurrentState = "waiting_for_auth_email"
 		bot.Send(msg)
 	}
+}
+
+func isMediaMessage(msg *tgbotapi.Message) bool {
+	return msg.Photo != nil ||
+		msg.Video != nil ||
+		msg.Audio != nil ||
+		msg.Voice != nil ||
+		msg.Animation != nil ||
+		msg.Game != nil ||
+		msg.Sticker != nil ||
+		msg.VideoNote != nil ||
+		msg.Contact != nil ||
+		msg.Location != nil ||
+		msg.Venue != nil
 }

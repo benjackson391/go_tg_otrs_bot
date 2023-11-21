@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-func TestHandleDocument(t *testing.T) {
+func TestHandleMessageAttachment(t *testing.T) {
 	bot := new(MockBotAPI)
 
 	csenario := []struct {
@@ -86,7 +86,7 @@ func TestHandleDocument(t *testing.T) {
 		bot.On("Send", mock.Anything).Return(tgbotapi.Message{}, nil)
 		bot.On("GetFileDirectURL", mock.Anything).Return("", nil)
 
-		HandleDocument(update, bot, test_case.UserData)
+		HandleMessage(update, bot, test_case.UserData)
 
 		if len(bot.SentMessages) != 1 {
 			t.Errorf("[%d] Expected one message to be sent for start command, got: %v", test_number, len(bot.SentMessages))

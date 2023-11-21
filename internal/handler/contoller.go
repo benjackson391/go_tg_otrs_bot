@@ -8,7 +8,6 @@ import (
 	"tg_bot/internal/logger"
 	"tg_bot/internal/models"
 
-	"github.com/davecgh/go-spew/spew"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 )
 
@@ -22,8 +21,6 @@ func HandleUpdate(update tgbotapi.Update, bot models.BotAPI, userData *models.Us
 	if update.Message != nil {
 		if update.Message.IsCommand() {
 			HandleCommand(update, bot, userData)
-		} else if update.Message.Document != nil {
-			HandleDocument(update, bot, userData)
 		} else {
 			HandleMessage(update, bot, userData)
 		}
@@ -43,8 +40,6 @@ func Run(wg *sync.WaitGroup, update tgbotapi.Update, bot models.BotAPI, userStat
 	isAuthorized, CustomerUserLogin := database.IsAuthorized(userName)
 	userData.CustomerUserLogin = CustomerUserLogin
 
-	logger.Debug("userData before:")
-	spew.Dump(userData)
 	if isAuthorized {
 		HandleUpdate(update, bot, &userData)
 	} else {
@@ -52,5 +47,4 @@ func Run(wg *sync.WaitGroup, update tgbotapi.Update, bot models.BotAPI, userStat
 	}
 	userStates.Store(userID, userData)
 	logger.Debug("userData after:")
-	spew.Dump(userData)
 }

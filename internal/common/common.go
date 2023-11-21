@@ -127,8 +127,8 @@ func GetPendingTickets(tickets []models.TgTicket) []models.TgTicket {
 	}
 	return pendingTickets
 }
-func GetFileContent(doc *tgbotapi.Document, bot models.BotAPI) ([]byte, error) {
-	fileLink, err := bot.GetFileDirectURL(doc.FileID)
+func GetFileContent(fileID string, bot models.BotAPI) ([]byte, error) {
+	fileLink, err := bot.GetFileDirectURL(fileID)
 
 	if err != nil {
 		logger.Warning(err.Error())
