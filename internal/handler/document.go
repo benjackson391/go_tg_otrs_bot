@@ -3,6 +3,7 @@ package handler
 import (
 	"tg_bot/config"
 	"tg_bot/internal/common"
+	"tg_bot/internal/logger"
 	"tg_bot/internal/models"
 	"tg_bot/internal/otrs"
 
@@ -10,6 +11,7 @@ import (
 )
 
 func HandleDocument(update tgbotapi.Update, bot models.BotAPI, userData *models.UserState) {
+	logger.Debug("document.HandleDocument")
 	doc := update.Message.Document
 
 	if doc.FileSize > config.FileSizeLimit {

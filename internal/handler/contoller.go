@@ -5,18 +5,20 @@ import (
 	"sync"
 	"tg_bot/internal/common"
 	"tg_bot/internal/database"
+	"tg_bot/internal/logger"
 	"tg_bot/internal/models"
 
+	"github.com/davecgh/go-spew/spew"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 )
 
 var (
 	ticketRegex = regexp.MustCompile(`^\d+$`)
 	voteRegex   = regexp.MustCompile(`^vote_?(\d)?$`)
-	userStates  sync.Map
 )
 
-func HandleUpdate(update tgbotapi.Update, bot *tgbotapi.BotAPI, userData *models.UserState) {
+func HandleUpdate(update tgbotapi.Update, bot models.BotAPI, userData *models.UserState) {
+	logger.Debug("controller.HandleUpdate")
 	if update.Message != nil {
 		if update.Message.IsCommand() {
 			HandleCommand(update, bot, userData)
@@ -30,20 +32,25 @@ func HandleUpdate(update tgbotapi.Update, bot *tgbotapi.BotAPI, userData *models
 	}
 }
 
-func Run(wg *sync.WaitGroup, update tgbotapi.Update, bot *tgbotapi.BotAPI) {
+func Run(wg *sync.WaitGroup, update tgbotapi.Update, bot models.BotAPI, userStates *sync.Map) {
+	logger.Debug("controller.Run")
 	defer wg.Done()
 
 	userID := common.GetUserID(update)
 	userName := common.GetUserName(update)
-	userData := common.GetUserData(userID, userName)
+	userData := common.GetUserData(userID, userName, userStates)
 
 	isAuthorized, CustomerUserLogin := database.IsAuthorized(userName)
 	userData.CustomerUserLogin = CustomerUserLogin
 
+	logger.Debug("userData before:")
+	spew.Dump(userData)
 	if isAuthorized {
 		HandleUpdate(update, bot, &userData)
 	} else {
 		handleAuthoriseMessage(update, bot, &userData)
 	}
 	userStates.Store(userID, userData)
+	logger.Debug("userData after:")
+	spew.Dump(userData)
 }

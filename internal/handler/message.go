@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"tg_bot/config"
 	"tg_bot/internal/common"
+	"tg_bot/internal/logger"
 	"tg_bot/internal/models"
 	"tg_bot/internal/otrs"
 
@@ -12,6 +13,7 @@ import (
 )
 
 func HandleMessage(update tgbotapi.Update, bot models.BotAPI, userData *models.UserState) {
+	logger.Debug("message.HandleMessage")
 	switch userData.CurrentState {
 	case "waiting_for_request_topic":
 		userData.Topic = update.Message.Text
@@ -33,7 +35,8 @@ func HandleMessage(update tgbotapi.Update, bot models.BotAPI, userData *models.U
 	}
 }
 
-func handleAuthoriseMessage(update tgbotapi.Update, bot *tgbotapi.BotAPI, userData *models.UserState) {
+func handleAuthoriseMessage(update tgbotapi.Update, bot models.BotAPI, userData *models.UserState) {
+	logger.Debug("message.handleAuthoriseMessage")
 	if userData.CurrentState != "" {
 		switch userData.CurrentState {
 		case "waiting_for_auth_email":

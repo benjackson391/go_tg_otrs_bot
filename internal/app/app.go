@@ -2,7 +2,6 @@ package app
 
 import (
 	"os"
-	"runtime/pprof"
 	"sync"
 
 	"tg_bot/internal/database"
@@ -29,26 +28,26 @@ func setupBotAPI() *tgbotapi.BotAPI {
 }
 
 func run(bot *tgbotapi.BotAPI) {
-	cpuFile, err := os.Create("cpu.prof")
-	if err != nil {
-		panic(err)
-	}
-	defer cpuFile.Close()
+	// cpuFile, err := os.Create("cpu.prof")
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// defer cpuFile.Close()
 
-	// Запуск профилирования CPU
-	if err := pprof.StartCPUProfile(cpuFile); err != nil {
-		panic(err)
-	}
-	defer pprof.StopCPUProfile()
+	// // Запуск профилирования CPU
+	// if err := pprof.StartCPUProfile(cpuFile); err != nil {
+	// 	panic(err)
+	// }
+	// defer pprof.StopCPUProfile()
 
-	memFile, err := os.Create("mem.prof")
-	if err != nil {
-		panic(err)
-	}
-	defer memFile.Close()
-	if err := pprof.WriteHeapProfile(memFile); err != nil {
-		panic(err)
-	}
+	// memFile, err := os.Create("mem.prof")
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// defer memFile.Close()
+	// if err := pprof.WriteHeapProfile(memFile); err != nil {
+	// 	panic(err)
+	// }
 
 	appNR, err := newrelic.NewApplication(
 		newrelic.ConfigAppName("tg_bot"),
@@ -68,6 +67,7 @@ func run(bot *tgbotapi.BotAPI) {
 	logger.Info("Bot started")
 
 	var wg sync.WaitGroup
+	var userStates sync.Map
 
 	for {
 		select {
@@ -76,7 +76,7 @@ func run(bot *tgbotapi.BotAPI) {
 			defer txn.End()
 
 			wg.Add(1)
-			go handler.Run(&wg, update, bot)
+			go handler.Run(&wg, update, bot, &userStates)
 		case <-ctx.Done():
 			logger.Info("Bot stopped due to context cancellation")
 			return

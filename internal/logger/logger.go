@@ -5,10 +5,10 @@ import (
 	"os"
 )
 
-var debugLogger = log.New(os.Stdout, "[DEBUG]: ", log.Ldate|log.Ltime)
-var infoLogger = log.New(os.Stdout, "[INFO]: ", log.Ldate|log.Ltime)
-var warningLogger = log.New(os.Stdout, "[WARNING]: ", log.Ldate|log.Ltime)
-var errorLogger = log.New(os.Stdout, "[ERROR]: ", log.Ldate|log.Ltime)
+var debugLogger = log.New(os.Stdout, "[DEBUG]:\t", log.Ldate|log.Ltime)
+var infoLogger = log.New(os.Stdout, "[INFO]:\t", log.Ldate|log.Ltime)
+var warningLogger = log.New(os.Stdout, "[WARNING]:\t", log.Ldate|log.Ltime)
+var errorLogger = log.New(os.Stdout, "[ERROR]:\t", log.Ldate|log.Ltime)
 
 var debugEnabled = false
 

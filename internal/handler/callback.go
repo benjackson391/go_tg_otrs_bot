@@ -18,17 +18,16 @@ var (
 	open_callback    = "show_open"
 	pending_title    = "Заявки на оценку"
 	pending_callback = "show_pending"
-	update_title     = "Выберите заявку, которую необходимо обновить"
 	update_callback  = "update_request"
 )
 
 func HandleCallbackQuery(update tgbotapi.Update, bot models.BotAPI, userData *models.UserState) {
-	logger.Debug("HandleCallbackQuery: " + update.CallbackQuery.Data)
+	logger.Info("callback.HandleCallbackQuery:" + userData.Action)
 	callback := update.CallbackQuery
 
 	switch callback.Data {
 	case "start":
-		start(callback, bot)
+		start(callback, bot, userData)
 	case "new_request":
 		newRequest(callback, bot, userData)
 	case "check_status":
@@ -90,7 +89,7 @@ func addCheckStatusButton(buttons []models.Button, title string, number int, cal
 	return buttons
 }
 
-func start(callback *tgbotapi.CallbackQuery, bot models.BotAPI) {
+func start(callback *tgbotapi.CallbackQuery, bot models.BotAPI, userData *models.UserState) {
 	logger.Debug("start")
 	msg := tgbotapi.NewMessage(callback.Message.Chat.ID, config.WelcomeDescription)
 	msg.ReplyMarkup = common.GetInitialKeyboard()
@@ -122,7 +121,7 @@ func checkStatus(callback *tgbotapi.CallbackQuery, bot models.BotAPI, userData *
 }
 
 func listTickets(callback *tgbotapi.CallbackQuery, bot models.BotAPI, userData *models.UserState) {
-	logger.Debug("listTickets")
+	logger.Debug("callback.listTickets:" + userData.Action)
 
 	tickets := database.GetTickets(userData.UserName)
 
@@ -135,7 +134,7 @@ func listTickets(callback *tgbotapi.CallbackQuery, bot models.BotAPI, userData *
 		title = pending_title
 		tickets = common.GetPendingTickets(tickets)
 	case "update_request":
-		title = update_title
+		title = config.UpdateTitle
 	default:
 		title = ""
 	}
@@ -177,7 +176,7 @@ func create(callback *tgbotapi.CallbackQuery, bot models.BotAPI, userData *model
 }
 
 func preview_ticket(callback *tgbotapi.CallbackQuery, bot models.BotAPI, userData *models.UserState) {
-	logger.Debug("preview_ticket")
+	logger.Info("preview_ticket:" + userData.Action)
 	ticket := database.GetTicket(callback.Data)
 
 	var formattedTime string

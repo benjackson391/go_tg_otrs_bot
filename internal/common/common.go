@@ -10,7 +10,6 @@ import (
 	"tg_bot/internal/models"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
 )
 
@@ -22,8 +21,6 @@ var TRANSLATION = map[string]string{
 	"pending auto close+": "ожидает автозакрытия(+)",
 	"pending auto close-": "ожидает автозакрытия(-)",
 }
-
-var userStates sync.Map
 
 func GetUserName(update tgbotapi.Update) string {
 	if update.Message != nil {
@@ -43,7 +40,7 @@ func GetUserID(update tgbotapi.Update) int {
 	return 0
 }
 
-func GetUserData(userID int, userName string) models.UserState {
+func GetUserData(userID int, userName string, userStates *sync.Map) models.UserState {
 	userData, ok := userStates.Load(userID)
 	if ok {
 		return userData.(models.UserState)
@@ -139,7 +136,6 @@ func GetFileContent(doc *tgbotapi.Document, bot models.BotAPI) ([]byte, error) {
 	}
 
 	response, err := http.Get(fileLink)
-	spew.Dump(response)
 	if err != nil {
 		logger.Warning(err.Error())
 		return nil, err
@@ -148,7 +144,7 @@ func GetFileContent(doc *tgbotapi.Document, bot models.BotAPI) ([]byte, error) {
 	defer response.Body.Close()
 
 	if response.StatusCode != 200 {
-		return nil, fmt.Errorf("Bad return code: %d", response.StatusCode)
+		return nil, fmt.Errorf("bad return code: %d", response.StatusCode)
 	}
 
 	return io.ReadAll(response.Body)
@@ -158,5 +154,6 @@ func CleanUpUserData(userData *models.UserState) {
 	*userData = models.UserState{
 		UserName:          userData.UserName,
 		CustomerUserLogin: userData.CustomerUserLogin,
+		Action:            userData.Action,
 	}
 }

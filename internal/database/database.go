@@ -46,7 +46,11 @@ func ConnectDB() {
 	Q = dal.Use(db)
 }
 
-func IsAuthorized(userName string) (bool, string) {
+var IsAuthorized = isAuthorizedImpl
+var GetTickets = GetTicketsImpl
+var GetTicket = GetTicketImpl
+
+func isAuthorizedImpl(userName string) (bool, string) {
 	var user models.TgUser
 	db.First(&user, "TelegramLogin = ?", userName)
 
@@ -71,7 +75,7 @@ func GetStateTypeCount(CustomerUserLogin string) models.StateTypeCount {
 	return count
 }
 
-func GetTickets(userName string) []models.TgTicket {
+func GetTicketsImpl(userName string) []models.TgTicket {
 	var tickets []models.TgTicket
 
 	db.Find(&tickets, "TelegramLogin = ?", userName)
@@ -79,7 +83,7 @@ func GetTickets(userName string) []models.TgTicket {
 	return tickets
 }
 
-func GetTicket(TicketID string) models.TgTicket {
+func GetTicketImpl(TicketID string) models.TgTicket {
 	var ticket models.TgTicket
 
 	db.First(&ticket, "TicketID = ?", TicketID)

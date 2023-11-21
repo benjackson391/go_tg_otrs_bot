@@ -10,7 +10,7 @@ import (
 )
 
 func HandleCommand(update tgbotapi.Update, bot models.BotAPI, userData *models.UserState) {
-	logger.Debug("HandleCommand")
+	logger.Debug("command.HandleCommand")
 	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
 	switch update.Message.Command() {
 	case "start":

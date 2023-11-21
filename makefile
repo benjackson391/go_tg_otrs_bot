@@ -4,6 +4,9 @@ ENV_FILE = /opt/go_tg_bot/.env
 
 DOCKERFILE_PATH = ./build/Dockerfile
 
+gobuild:
+	go mod download && CGO_ENABLED=0 GOOS=linux go build -o ./.bin/app
+
 build:
 	docker build -t $(IMAGE_NAME) -f $(DOCKERFILE_PATH) .
 
