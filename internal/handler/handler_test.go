@@ -5,7 +5,7 @@ import (
 	"tg_bot/config"
 	"tg_bot/internal/models"
 
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -17,7 +17,7 @@ func getUpdateObj(command string) tgbotapi.Update {
 			Chat: &tgbotapi.Chat{
 				ID: 12345,
 			},
-			Entities: &[]tgbotapi.MessageEntity{
+			Entities: []tgbotapi.MessageEntity{
 				{
 					Type:   "bot_command",
 					Offset: 0,
@@ -32,6 +32,9 @@ func TestHandleCommandStart(t *testing.T) {
 	bot := new(MockBotAPI)
 
 	update := getUpdateObj("/start")
+	userData = &models.UserState{
+		Action: "",
+	}
 
 	bot.On("Send", mock.Anything).Return(tgbotapi.Message{}, nil)
 
@@ -69,7 +72,7 @@ func TestHandleCommandStop(t *testing.T) {
 	bot.On("Send", mock.Anything).Return(tgbotapi.Message{}, nil)
 
 	userData = &models.UserState{
-		CurrentState: "test",
+		Action: "test",
 	}
 
 	HandleCommand(update, bot, userData)

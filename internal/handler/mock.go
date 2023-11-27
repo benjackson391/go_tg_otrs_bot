@@ -3,7 +3,7 @@ package handler
 import (
 	"tg_bot/internal/models"
 
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/newrelic/go-agent/v3/newrelic"
 
 	"github.com/stretchr/testify/mock"

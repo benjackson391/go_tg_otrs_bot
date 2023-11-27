@@ -1,18 +1,22 @@
 package handler
 
 import (
+	"fmt"
 	"tg_bot/config"
 	"tg_bot/internal/common"
 	"tg_bot/internal/logger"
 	"tg_bot/internal/models"
 
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
 func HandleCommand(update tgbotapi.Update, bot models.BotAPI, userData *models.UserState) {
-	logger.Debug("command.HandleCommand")
 	msg := tgbotapi.NewMessage(update.Message.Chat.ID, "")
-	switch update.Message.Command() {
+	command := update.Message.Command()
+
+	logger.Debug(fmt.Sprintf("[%s:%s] command: %s", userData.UserName, userData.Action, command))
+
+	switch command {
 	case "start":
 		msg.Text = config.WelcomeMessage + "\n\n" + config.WelcomeDescription
 		msg.ReplyMarkup = common.GetInitialKeyboard()
@@ -25,4 +29,5 @@ func HandleCommand(update tgbotapi.Update, bot models.BotAPI, userData *models.U
 		msg.Text = config.UnknownCommand
 		bot.Send(msg)
 	}
+	userData.Action = command
 }

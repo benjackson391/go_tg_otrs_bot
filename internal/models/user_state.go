@@ -1,8 +1,9 @@
 package models
 
+import tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+
 type UserState struct {
 	UserName          string
-	CurrentState      string
 	Topic             string
 	Description       string
 	Email             string
@@ -11,4 +12,6 @@ type UserState struct {
 	TicketID          string
 	CustomerUserLogin string
 	Vote              *string
+	Chan              chan *tgbotapi.Document
+	MediaGroupID      string
 }

@@ -27,7 +27,7 @@ func ConnectDB() {
 		log.New(os.Stdout, "\r\n", log.LstdFlags), // io writer
 		logger.Config{
 			SlowThreshold: time.Second, // Пороговое время для медленных запросов
-			LogLevel:      logger.Info, // Уровень логирования
+			LogLevel:      logger.Warn, // Уровень логирования
 			Colorful:      true,        // Включить цвета
 		},
 	)

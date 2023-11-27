@@ -10,7 +10,7 @@ import (
 	"tg_bot/internal/otrs"
 	"time"
 
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
 var (
@@ -22,8 +22,9 @@ var (
 )
 
 func HandleCallbackQuery(update tgbotapi.Update, bot models.BotAPI, userData *models.UserState) {
-	logger.Info("callback.HandleCallbackQuery:" + userData.Action)
 	callback := update.CallbackQuery
+
+	logger.Debug(fmt.Sprintf("[%s:%s] callback: %s", userData.UserName, userData.Action, callback.Data))
 
 	switch callback.Data {
 	case "start":
@@ -33,26 +34,19 @@ func HandleCallbackQuery(update tgbotapi.Update, bot models.BotAPI, userData *mo
 	case "check_status":
 		checkStatus(callback, bot, userData)
 	case "show_open":
-		userData.Action = "show_open"
 		listTickets(callback, bot, userData)
 	case "show_pending":
-		userData.Action = "show_pending"
 		listTickets(callback, bot, userData)
 	case "update_request":
-		userData.Action = "update_request"
 		listTickets(callback, bot, userData)
 	case "add_comment":
-		userData.Action = "add_comment"
-		// userData.Topic = update.Message.Text
-		userData.CurrentState = "waiting_for_comment"
+		userData.Action = "waiting_for_comment"
 		msg := tgbotapi.NewMessage(callback.Message.Chat.ID, "Введите комментарий")
 		bot.Send(msg)
 
 	case "attach_file":
-		if userData.Action == "add_comment" || (userData.Topic != "" && userData.Description != "" && userData.Action != "attach_file") {
-			userData.Action = "attach_file"
-			attachFile(callback, bot)
-		}
+		userData.Action = "attach_file"
+		attachFile(callback, bot, userData)
 	case "create":
 		create(callback, bot, userData)
 	default:
@@ -90,21 +84,18 @@ func addCheckStatusButton(buttons []models.Button, title string, number int, cal
 }
 
 func start(callback *tgbotapi.CallbackQuery, bot models.BotAPI, userData *models.UserState) {
-	logger.Debug("start")
 	msg := tgbotapi.NewMessage(callback.Message.Chat.ID, config.WelcomeDescription)
 	msg.ReplyMarkup = common.GetInitialKeyboard()
 	bot.Send(msg)
 }
 
 func newRequest(callback *tgbotapi.CallbackQuery, bot models.BotAPI, userData *models.UserState) {
-	logger.Debug("newRequest")
 	msg := tgbotapi.NewMessage(callback.Message.Chat.ID, "Введите тему заявки")
 	bot.Send(msg)
-	userData.CurrentState = "waiting_for_request_topic"
+	userData.Action = "waiting_for_title"
 }
 
 func checkStatus(callback *tgbotapi.CallbackQuery, bot models.BotAPI, userData *models.UserState) {
-	logger.Debug("checkStatus")
 	state_type_count := database.GetStateTypeCount(userData.CustomerUserLogin)
 
 	buttons := []models.Button{}
@@ -121,12 +112,12 @@ func checkStatus(callback *tgbotapi.CallbackQuery, bot models.BotAPI, userData *
 }
 
 func listTickets(callback *tgbotapi.CallbackQuery, bot models.BotAPI, userData *models.UserState) {
-	logger.Debug("callback.listTickets:" + userData.Action)
+	logger.Debug(fmt.Sprintf("[%s:%s] callback.listTickets: %s", userData.UserName, userData.Action, callback.Data))
 
 	tickets := database.GetTickets(userData.UserName)
 
 	var title string
-	switch userData.Action {
+	switch callback.Data {
 	case "show_open":
 		title = open_title
 		tickets = common.GetOpenTickets(tickets)
@@ -146,7 +137,9 @@ func listTickets(callback *tgbotapi.CallbackQuery, bot models.BotAPI, userData *
 	bot.Send(msg)
 }
 
-func attachFile(callback *tgbotapi.CallbackQuery, bot models.BotAPI) {
+func attachFile(callback *tgbotapi.CallbackQuery, bot models.BotAPI, userData *models.UserState) {
+	logger.Debug(fmt.Sprintf("[%s:%s] attach file yes", userData.UserName, userData.Action))
+
 	msg := tgbotapi.NewMessage(callback.Message.Chat.ID, "Приложите файл до 20Mb")
 	inlineKeyboard := tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(
@@ -158,7 +151,6 @@ func attachFile(callback *tgbotapi.CallbackQuery, bot models.BotAPI) {
 }
 
 func create(callback *tgbotapi.CallbackQuery, bot models.BotAPI, userData *models.UserState) {
-	logger.Debug("create")
 
 	if userData.Description == "" {
 		return

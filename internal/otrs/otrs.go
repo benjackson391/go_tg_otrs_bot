@@ -12,7 +12,7 @@ import (
 	"tg_bot/internal/logger"
 	"tg_bot/internal/models"
 
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
 var (

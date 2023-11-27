@@ -9,43 +9,59 @@ import (
 	"tg_bot/internal/models"
 	"tg_bot/internal/otrs"
 
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
 func HandleMessage(update tgbotapi.Update, bot models.BotAPI, userData *models.UserState) {
-	logger.Debug("message.HandleMessage")
-
 	if isMediaMessage(update.Message) {
 		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Некорректное вложение, приложите Файл")
 		bot.Send(msg)
 	} else if update.Message.Document != nil {
 		HandleDocument(update, bot, userData)
 	} else {
-		switch userData.CurrentState {
-		case "waiting_for_request_topic":
-			userData.Topic = update.Message.Text
-			userData.CurrentState = "waiting_for_comment"
-			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Введите описание заявки")
-			bot.Send(msg)
+		length := len(update.Message.Text)
+		threshold := 100
+		if length > threshold {
+			bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, fmt.Sprintf("Cообщение слишком длинное (%d символов, максимальная длинна сообщения - %d символов)", length, threshold)))
+		} else {
+			switch userData.Action {
+			case "waiting_for_title":
 
-		case "waiting_for_comment":
-			userData.Description = update.Message.Text
-			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Прикрепить файл?")
-			inlineKeyboard := tgbotapi.NewInlineKeyboardMarkup(
-				tgbotapi.NewInlineKeyboardRow(
-					tgbotapi.NewInlineKeyboardButtonData("Да", "attach_file"),
-					tgbotapi.NewInlineKeyboardButtonData("Нет", "create"),
-				),
-			)
-			msg.ReplyMarkup = inlineKeyboard
-			bot.Send(msg)
+				userData.Topic = update.Message.Text
+
+				logger.Debug(fmt.Sprintf("[%s:%s] input title: `%s`", userData.UserName, userData.Action, userData.Topic))
+
+				userData.Action = "waiting_for_comment"
+				msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Введите описание заявки")
+				bot.Send(msg)
+
+			case "waiting_for_comment":
+				userData.Description = update.Message.Text
+
+				logger.Debug(fmt.Sprintf("[%s:%s] input description: `%s`", userData.UserName, userData.Action, userData.Description))
+
+				msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Прикрепить файл?")
+				inlineKeyboard := tgbotapi.NewInlineKeyboardMarkup(
+					tgbotapi.NewInlineKeyboardRow(
+						tgbotapi.NewInlineKeyboardButtonData("Да", "attach_file"),
+						tgbotapi.NewInlineKeyboardButtonData("Нет", "create"),
+					),
+				)
+				msg.ReplyMarkup = inlineKeyboard
+				bot.Send(msg)
+			}
 		}
 	}
 }
 
 func HandleDocument(update tgbotapi.Update, bot models.BotAPI, userData *models.UserState) {
-	logger.Debug("document.HandleDocument")
+	logger.Debug(fmt.Sprintf("[%s:%s] handle document: `%s`", userData.UserName, userData.Action, update.Message.Document.FileName))
+
 	doc := update.Message.Document
+
+	// if update.Message.MediaGroupID != "" && (userData.MediaGroupID == "" || userData.MediaGroupID == update.Message.MediaGroupID) {
+	// 	userData.Chan <- update.Message.Document
+	// }
 
 	if doc.FileSize > config.FileSizeLimit {
 		bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, config.BigFileMessage))
@@ -69,8 +85,8 @@ func HandleDocument(update tgbotapi.Update, bot models.BotAPI, userData *models.
 
 func handleAuthoriseMessage(update tgbotapi.Update, bot models.BotAPI, userData *models.UserState) {
 	logger.Debug("message.handleAuthoriseMessage")
-	if userData.CurrentState != "" {
-		switch userData.CurrentState {
+	if userData.Action != "" {
+		switch userData.Action {
 		case "waiting_for_auth_email":
 			Email := update.Message.Text
 			userData.Email = Email
@@ -87,7 +103,7 @@ func handleAuthoriseMessage(update tgbotapi.Update, bot models.BotAPI, userData 
 				template = "Произошла ошибка при подтверждении %s, попробуйте позднее"
 			} else if resp.Sent == 1 {
 				template = "Проверочный код отправлен на %s\nДля подтверждения адреса электронной почты введите код из письма"
-				userData.CurrentState = "waiting_for_auth_email_code"
+				userData.Action = "waiting_for_auth_email_code"
 			}
 			msg := tgbotapi.NewMessage(update.Message.Chat.ID, fmt.Sprintf(template, Email))
 			bot.Send(msg)
@@ -117,7 +133,7 @@ func handleAuthoriseMessage(update tgbotapi.Update, bot models.BotAPI, userData 
 		}
 	} else {
 		msg := tgbotapi.NewMessage(update.Message.Chat.ID, config.WelcomeMessage+"\n\nВведите свой адрес электронный почты, который зарегистрирован в OTRS")
-		userData.CurrentState = "waiting_for_auth_email"
+		userData.Action = "waiting_for_auth_email"
 		bot.Send(msg)
 	}
 }

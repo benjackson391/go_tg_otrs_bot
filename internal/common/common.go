@@ -10,7 +10,7 @@ import (
 	"tg_bot/internal/models"
 	"time"
 
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
 var TRANSLATION = map[string]string{
@@ -31,7 +31,7 @@ func GetUserName(update tgbotapi.Update) string {
 	return ""
 }
 
-func GetUserID(update tgbotapi.Update) int {
+func GetUserID(update tgbotapi.Update) int64 {
 	if update.Message != nil {
 		return update.Message.From.ID
 	} else if update.CallbackQuery != nil {
@@ -40,7 +40,7 @@ func GetUserID(update tgbotapi.Update) int {
 	return 0
 }
 
-func GetUserData(userID int, userName string, userStates *sync.Map) models.UserState {
+func GetUserData(userID int64, userName string, userStates *sync.Map) models.UserState {
 	userData, ok := userStates.Load(userID)
 	if ok {
 		return userData.(models.UserState)
