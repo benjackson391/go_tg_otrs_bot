@@ -29,7 +29,7 @@ func TestHandleMessageAttachment(t *testing.T) {
 			OtrsPath:     "/create",
 			OtrsResponse: "",
 			Code:         200,
-			AnswerText:   "Файл слишком большой. Приложите другой файл",
+			AnswerText:   config.BigFileMessage,
 		},
 		{
 			UserData:     &models.UserState{TicketID: ""},

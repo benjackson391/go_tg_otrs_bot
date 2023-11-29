@@ -16,12 +16,13 @@ import (
 )
 
 var (
-	URL        string
-	USER       string
-	PASS       string
-	Mock_OTRS  string
-	stateId    int
-	QueueID    int = 3
+	URL       string
+	USER      string
+	PASS      string
+	Mock_OTRS string
+	stateId   int
+	QueueID   int = 2
+	// QueueID    int = 3
 	TypeID     int = 3
 	PriorityID int = 3
 	OwnerID    int = 1

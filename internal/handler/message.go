@@ -20,7 +20,7 @@ func HandleMessage(update tgbotapi.Update, bot models.BotAPI, userData *models.U
 		HandleDocument(update, bot, userData)
 	} else {
 		length := len(update.Message.Text)
-		threshold := 100
+		threshold := config.MessageMaxLength
 		if length > threshold {
 			bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, fmt.Sprintf("Cообщение слишком длинное (%d символов, максимальная длинна сообщения - %d символов)", length, threshold)))
 		} else {
@@ -58,10 +58,6 @@ func HandleDocument(update tgbotapi.Update, bot models.BotAPI, userData *models.
 	logger.Debug(fmt.Sprintf("[%s:%s] handle document: `%s`", userData.UserName, userData.Action, update.Message.Document.FileName))
 
 	doc := update.Message.Document
-
-	// if update.Message.MediaGroupID != "" && (userData.MediaGroupID == "" || userData.MediaGroupID == update.Message.MediaGroupID) {
-	// 	userData.Chan <- update.Message.Document
-	// }
 
 	if doc.FileSize > config.FileSizeLimit {
 		bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, config.BigFileMessage))

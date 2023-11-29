@@ -18,7 +18,7 @@ import (
 var err error
 
 func setupBotAPI() *tgbotapi.BotAPI {
-	botToken := os.Getenv("BOT_TOKEN")
+	botToken := os.Getenv("PROD_BOT_TOKEN")
 	bot, err := tgbotapi.NewBotAPI(botToken)
 	if err != nil {
 		logger.Error(err.Error())
