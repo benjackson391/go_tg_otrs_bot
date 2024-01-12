@@ -27,9 +27,7 @@ func HandleUpdate(update tgbotapi.Update, bot models.BotAPI, userData *models.Us
 	}
 }
 
-func Run(wg *sync.WaitGroup, update tgbotapi.Update, bot models.BotAPI, userStates *sync.Map) {
-	defer wg.Done()
-
+func Run(update tgbotapi.Update, bot models.BotAPI, userStates *sync.Map) {
 	userID := common.GetUserID(update)
 	userName := common.GetUserName(update)
 	userData := common.GetUserData(userID, userName, userStates)

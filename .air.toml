@@ -3,7 +3,7 @@ root = "."
 tmp_dir = "tmp"
 
 [build]
-  bin = ";export $(grep -v '^#' .env | xargs); ./tmp/main"
+  bin = ";export MODE=DEV;export $(grep -v '^#' .env | xargs); ./tmp/main"
   cmd = "go build -o ./tmp/main cmd/app/main.go"
   include = [
     ".go",

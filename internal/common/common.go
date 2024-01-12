@@ -5,6 +5,7 @@ import (
 	"io"
 	"math/rand"
 	"net/http"
+	"os"
 	"sync"
 	"tg_bot/internal/logger"
 	"tg_bot/internal/models"
@@ -20,6 +21,15 @@ var TRANSLATION = map[string]string{
 	"pending auto":        "ожидает автозакрытия",
 	"pending auto close+": "ожидает автозакрытия(+)",
 	"pending auto close-": "ожидает автозакрытия(-)",
+}
+
+func GetBotToken() string {
+	mode := os.Getenv("MODE")
+	tokenEnv := "PROD_BOT_TOKEN"
+	if mode == "DEV" {
+		tokenEnv = "DEV_BOT_TOKEN"
+	}
+	return os.Getenv(tokenEnv)
 }
 
 func GetUserName(update tgbotapi.Update) string {

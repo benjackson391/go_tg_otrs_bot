@@ -38,10 +38,6 @@ func ConnectDB() {
 		Logger:                 newLogger,
 	})
 
-	// if err != nil {
-	// newLogger.Error("error:", err)
-	// }
-
 	dal.SetDefault(db)
 	Q = dal.Use(db)
 }

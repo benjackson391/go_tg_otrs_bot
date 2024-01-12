@@ -18,6 +18,8 @@ func HandleMessage(update tgbotapi.Update, bot models.BotAPI, userData *models.U
 		bot.Send(msg)
 	} else if update.Message.Document != nil {
 		HandleDocument(update, bot, userData)
+	} else if update.Message.Photo != nil {
+		HandleDocument(update, bot, userData)
 	} else {
 		length := len(update.Message.Text)
 		threshold := config.MessageMaxLength
@@ -135,8 +137,8 @@ func handleAuthoriseMessage(update tgbotapi.Update, bot models.BotAPI, userData 
 }
 
 func isMediaMessage(msg *tgbotapi.Message) bool {
-	return msg.Photo != nil ||
-		msg.Video != nil ||
+	// return msg.Photo != nil ||
+	return msg.Video != nil ||
 		msg.Audio != nil ||
 		msg.Voice != nil ||
 		msg.Animation != nil ||
