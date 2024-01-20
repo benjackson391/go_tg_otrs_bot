@@ -10,4 +10,6 @@ type UserState struct {
 	TicketID          string
 	CustomerUserLogin string
 	Vote              *string
+	State             int
+	Trace             []string
 }

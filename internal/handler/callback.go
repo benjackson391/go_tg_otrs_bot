@@ -21,38 +21,53 @@ var (
 	update_callback  = "update_request"
 )
 
-func HandleCallbackQuery(update tgbotapi.Update, bot models.BotAPI, userData *models.UserState) {
+func HandleCallbackQuery(update tgbotapi.Update, bot models.BotAPI, userData *models.UserState, logger *logger.Logger) {
+	userData.Trace = append(userData.Trace, "HandleCallbackQuery")
 	callback := update.CallbackQuery
 
-	logger.Debug(fmt.Sprintf("[%s:%s] callback: %s", userData.UserName, userData.Action, callback.Data))
+	logger.Info(callback.Data)
 
 	switch callback.Data {
 	case "start":
 		start(callback, bot, userData)
 	case "new_request":
+		userData.State = 2
 		newRequest(callback, bot, userData)
 	case "check_status":
+		userData.State = 3
 		checkStatus(callback, bot, userData)
 	case "show_open":
 		listTickets(callback, bot, userData)
 	case "show_pending":
 		listTickets(callback, bot, userData)
 	case "update_request":
+		userData.State = 4
 		listTickets(callback, bot, userData)
 	case "add_comment":
+		if userData.State == 41 {
+			userData.State = 42
+		}
+
 		userData.Action = "waiting_for_comment"
 		msg := tgbotapi.NewMessage(callback.Message.Chat.ID, "Введите комментарий")
 		bot.Send(msg)
 
 	case "attach_file":
+		if userData.State == 43 {
+			userData.State = 431
+		}
 		userData.Action = "attach_file"
 		attachFile(callback, bot, userData)
 	case "create":
-		create(callback, bot, userData)
+		if userData.State == 43 {
+			userData.State = 432
+		}
+		create(callback, bot, userData, logger)
 	default:
 		if ticketRegex.MatchString(callback.Data) {
+			userData.State = 41
 			userData.TicketID = callback.Data
-			preview_ticket(callback, bot, userData)
+			preview_ticket(callback, bot, userData, logger)
 		} else if voteRegex.MatchString(callback.Data) {
 			logger.Debug("default:is_vote")
 			match := voteRegex.FindStringSubmatch(callback.Data)
@@ -60,7 +75,7 @@ func HandleCallbackQuery(update tgbotapi.Update, bot models.BotAPI, userData *mo
 			userData.Vote = &match[1]
 
 			if userData.TicketID != "" {
-				_, text := otrs.CreateOrUpdateTicket(bot, userData, nil, nil)
+				_, text := otrs.CreateOrUpdateTicket(bot, userData, nil, nil, nil, logger)
 				msg := tgbotapi.NewMessage(callback.Message.Chat.ID, text)
 				buttons := []models.Button{
 					{Title: "Назад", Callback: "start"},
@@ -77,6 +92,7 @@ func HandleCallbackQuery(update tgbotapi.Update, bot models.BotAPI, userData *mo
 }
 
 func addCheckStatusButton(buttons []models.Button, title string, number int, callback string) []models.Button {
+	userData.Trace = append(userData.Trace, "addCheckStatusButton")
 	if number > 0 {
 		buttons = append(buttons, models.Button{Title: fmt.Sprintf("%s (%d)", title, number), Callback: callback})
 	}
@@ -84,18 +100,22 @@ func addCheckStatusButton(buttons []models.Button, title string, number int, cal
 }
 
 func start(callback *tgbotapi.CallbackQuery, bot models.BotAPI, userData *models.UserState) {
+	userData.Trace = append(userData.Trace, "start")
 	msg := tgbotapi.NewMessage(callback.Message.Chat.ID, config.WelcomeDescription)
 	msg.ReplyMarkup = common.GetInitialKeyboard()
 	bot.Send(msg)
 }
 
 func newRequest(callback *tgbotapi.CallbackQuery, bot models.BotAPI, userData *models.UserState) {
+	userData.Trace = append(userData.Trace, "newRequest")
 	msg := tgbotapi.NewMessage(callback.Message.Chat.ID, "Введите тему заявки")
 	bot.Send(msg)
 	userData.Action = "waiting_for_title"
 }
 
 func checkStatus(callback *tgbotapi.CallbackQuery, bot models.BotAPI, userData *models.UserState) {
+	userData.Trace = append(userData.Trace, "checkStatus")
+
 	state_type_count := database.GetStateTypeCount(userData.CustomerUserLogin)
 
 	buttons := []models.Button{}
@@ -112,7 +132,7 @@ func checkStatus(callback *tgbotapi.CallbackQuery, bot models.BotAPI, userData *
 }
 
 func listTickets(callback *tgbotapi.CallbackQuery, bot models.BotAPI, userData *models.UserState) {
-	logger.Debug(fmt.Sprintf("[%s:%s] callback.listTickets: %s", userData.UserName, userData.Action, callback.Data))
+	userData.Trace = append(userData.Trace, "listTickets")
 
 	tickets := database.GetTickets(userData.UserName)
 
@@ -138,8 +158,7 @@ func listTickets(callback *tgbotapi.CallbackQuery, bot models.BotAPI, userData *
 }
 
 func attachFile(callback *tgbotapi.CallbackQuery, bot models.BotAPI, userData *models.UserState) {
-	logger.Debug(fmt.Sprintf("[%s:%s] attach file yes", userData.UserName, userData.Action))
-
+	userData.Trace = append(userData.Trace, "attachFile")
 	msg := tgbotapi.NewMessage(callback.Message.Chat.ID, "Приложите файл до 20Mb")
 	inlineKeyboard := tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(
@@ -150,25 +169,32 @@ func attachFile(callback *tgbotapi.CallbackQuery, bot models.BotAPI, userData *m
 	bot.Send(msg)
 }
 
-func create(callback *tgbotapi.CallbackQuery, bot models.BotAPI, userData *models.UserState) {
-
-	if userData.Description == "" {
-		return
+func create(callback *tgbotapi.CallbackQuery, bot models.BotAPI, userData *models.UserState, logger *logger.Logger) {
+	userData.Trace = append(userData.Trace, "create")
+	if userData.State == 431 {
+		userData.State = 45
 	}
 
-	_, text := otrs.CreateOrUpdateTicket(bot, userData, nil, nil)
-	msg := tgbotapi.NewMessage(callback.Message.Chat.ID, text)
-	buttons := []models.Button{
-		{Title: "Назад", Callback: "start"},
-	}
-	msg.ReplyMarkup = common.GetInlineKeyboard(buttons)
-	bot.Send(msg)
+	if userData.State == 43 || userData.State == 431 || userData.State == 432 {
+		if userData.Description == "" {
+			return
+		}
 
-	common.CleanUpUserData(userData)
+		_, text := otrs.CreateOrUpdateTicket(bot, userData, nil, nil, nil, logger)
+		msg := tgbotapi.NewMessage(callback.Message.Chat.ID, text)
+		buttons := []models.Button{
+			{Title: "Назад", Callback: "start"},
+		}
+		msg.ReplyMarkup = common.GetInlineKeyboard(buttons)
+		bot.Send(msg)
+
+		common.CleanUpUserData(userData)
+	}
 }
 
-func preview_ticket(callback *tgbotapi.CallbackQuery, bot models.BotAPI, userData *models.UserState) {
-	logger.Info("preview_ticket:" + userData.Action)
+func preview_ticket(callback *tgbotapi.CallbackQuery, bot models.BotAPI, userData *models.UserState, logger *logger.Logger) {
+	userData.Trace = append(userData.Trace, "preview_ticket")
+
 	ticket := database.GetTicket(callback.Data)
 
 	var formattedTime string
@@ -204,7 +230,7 @@ func preview_ticket(callback *tgbotapi.CallbackQuery, bot models.BotAPI, userDat
 			{Title: "Вернуть на доработку", Callback: "vote_"},
 		}
 		buttons = append(vote_buttons, buttons...)
-	} else if userData.Action == update_callback {
+	} else if userData.Action == update_callback || userData.State == 41 {
 		update_buttons := []models.Button{
 			{Title: "Добавить комментарий", Callback: "add_comment"},
 		}

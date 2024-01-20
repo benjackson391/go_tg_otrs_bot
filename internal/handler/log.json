@@ -1,0 +1,22 @@
+{"time":"2024-01-20T17:53:53.59337016+03:00","level":"INFO","msg":"start"}
+{"time":"2024-01-20T17:53:53.593511161+03:00","level":"INFO","msg":"vote_5"}
+{"time":"2024-01-20T17:53:53.593553861+03:00","level":"INFO","msg":"vote_5"}
+{"time":"2024-01-20T17:53:53.593733263+03:00","level":"INFO","msg":"vote_4"}
+{"time":"2024-01-20T17:53:53.593791663+03:00","level":"INFO","msg":"vote_3"}
+{"time":"2024-01-20T17:53:53.593833864+03:00","level":"INFO","msg":"vote_2"}
+{"time":"2024-01-20T17:53:53.593874464+03:00","level":"INFO","msg":"vote_"}
+{"time":"2024-01-20T17:53:53.593970065+03:00","level":"INFO","msg":"update","UserName":"UserName","State":0,"Action":""}
+{"time":"2024-01-20T17:53:53.593984165+03:00","level":"INFO","msg":"start"}
+{"time":"2024-01-20T17:53:53.594028666+03:00","level":"INFO","msg":"update","UserName":"UserName","State":0,"Action":""}
+{"time":"2024-01-20T17:53:53.594032566+03:00","level":"INFO","msg":"update_request"}
+{"time":"2024-01-20T21:21:35.774357116+03:00","level":"INFO","msg":"start"}
+{"time":"2024-01-20T21:21:35.775101123+03:00","level":"INFO","msg":"vote_5"}
+{"time":"2024-01-20T21:21:35.775353025+03:00","level":"INFO","msg":"vote_5"}
+{"time":"2024-01-20T21:21:35.775703528+03:00","level":"INFO","msg":"vote_4"}
+{"time":"2024-01-20T21:21:35.77595073+03:00","level":"INFO","msg":"vote_3"}
+{"time":"2024-01-20T21:21:35.776180533+03:00","level":"INFO","msg":"vote_2"}
+{"time":"2024-01-20T21:21:35.776384934+03:00","level":"INFO","msg":"vote_"}
+{"time":"2024-01-20T21:21:35.776656337+03:00","level":"INFO","msg":"start"}
+{"time":"2024-01-20T21:21:35.776892539+03:00","level":"INFO","msg":"update","UserName":"UserName","state":"0 -> 0","trace":"Run::HandleUpdate::HandleCallbackQuery::start"}
+{"time":"2024-01-20T21:21:35.777052141+03:00","level":"INFO","msg":"update_request"}
+{"time":"2024-01-20T21:21:35.777264943+03:00","level":"INFO","msg":"update","UserName":"UserName","state":"0 -> 4","trace":"Run::HandleUpdate::HandleCallbackQuery::listTickets"}

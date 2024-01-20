@@ -3,6 +3,7 @@ package handler
 import (
 	"testing"
 	"tg_bot/config"
+	"tg_bot/internal/logger"
 	"tg_bot/internal/models"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -30,6 +31,7 @@ func getUpdateObj(command string) tgbotapi.Update {
 
 func TestHandleCommandStart(t *testing.T) {
 	bot := new(MockBotAPI)
+	logger := logger.New(true)
 
 	update := getUpdateObj("/start")
 	userData = &models.UserState{
@@ -38,7 +40,7 @@ func TestHandleCommandStart(t *testing.T) {
 
 	bot.On("Send", mock.Anything).Return(tgbotapi.Message{}, nil)
 
-	HandleCommand(update, bot, userData)
+	HandleCommand(update, bot, userData, logger)
 	if len(bot.SentMessages) != 1 {
 		t.Errorf("Expected one message to be sent for start command, got: %v", len(bot.SentMessages))
 	} else {
@@ -66,6 +68,7 @@ func TestHandleCommandStart(t *testing.T) {
 
 func TestHandleCommandStop(t *testing.T) {
 	bot := new(MockBotAPI)
+	logger := logger.New(true)
 
 	update := getUpdateObj("/stop")
 
@@ -75,7 +78,7 @@ func TestHandleCommandStop(t *testing.T) {
 		Action: "test",
 	}
 
-	HandleCommand(update, bot, userData)
+	HandleCommand(update, bot, userData, logger)
 	if len(bot.SentMessages) != 1 {
 		t.Errorf("Expected one message to be sent for start command, got: %v", len(bot.SentMessages))
 	} else {
@@ -90,12 +93,13 @@ func TestHandleCommandStop(t *testing.T) {
 
 func TestHandleCommandDefault(t *testing.T) {
 	bot := new(MockBotAPI)
+	logger := logger.New(true)
 
 	update := getUpdateObj("/unknown")
 
 	bot.On("Send", mock.Anything).Return(tgbotapi.Message{}, nil)
 
-	HandleCommand(update, bot, userData)
+	HandleCommand(update, bot, userData, logger)
 	if len(bot.SentMessages) != 1 {
 		t.Errorf("Expected one message to be sent for start command, got: %v", len(bot.SentMessages))
 	} else {

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"testing"
 	"tg_bot/config"
+	"tg_bot/internal/logger"
 	"tg_bot/internal/models"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -14,6 +15,7 @@ import (
 
 func TestHandleMessageAttachment(t *testing.T) {
 	bot := new(MockBotAPI)
+	logger := logger.New(true)
 
 	csenario := []struct {
 		UserData     *models.UserState
@@ -86,7 +88,7 @@ func TestHandleMessageAttachment(t *testing.T) {
 		bot.On("Send", mock.Anything).Return(tgbotapi.Message{}, nil)
 		bot.On("GetFileDirectURL", mock.Anything).Return("", nil)
 
-		HandleMessage(update, bot, test_case.UserData)
+		HandleMessage(update, bot, test_case.UserData, logger)
 
 		if len(bot.SentMessages) != 1 {
 			t.Errorf("[%d] Expected one message to be sent for start command, got: %v", test_number, len(bot.SentMessages))

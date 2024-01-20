@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"testing"
 	"tg_bot/config"
+	"tg_bot/internal/logger"
 	"tg_bot/internal/models"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -14,6 +15,8 @@ import (
 
 func TestHandleCallbackQuery(t *testing.T) {
 	bot := new(MockBotAPI)
+
+	logger := logger.New(true)
 
 	csenario := []struct {
 		UserData     *models.UserState
@@ -87,7 +90,7 @@ func TestHandleCallbackQuery(t *testing.T) {
 			httpmock.NewStringResponder(200, `{"ArticleID":"1","TicketID":"1","TicketNumber":"1"}`))
 
 		bot.On("Send", mock.Anything).Return(tgbotapi.Message{}, nil)
-		HandleCallbackQuery(update, bot, test_case.UserData)
+		HandleCallbackQuery(update, bot, test_case.UserData, logger)
 
 		if len(bot.SentMessages) != 1 {
 			t.Errorf("[%d] Expected one message to be sent for start command, got: %v", test_number, len(bot.SentMessages))

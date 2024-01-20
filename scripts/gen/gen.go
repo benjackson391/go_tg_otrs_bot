@@ -2,7 +2,6 @@ package main
 
 import (
 	"os"
-	"tg_bot/internal/logger"
 
 	"github.com/joho/godotenv"
 	"gorm.io/driver/mysql"
@@ -13,7 +12,7 @@ import (
 func main() {
 	err := godotenv.Load()
 	if err != nil {
-		logger.Error("Error loading .env file")
+		// logger.Error("Error loading .env file")
 	}
 
 	g := gen.NewGenerator(gen.Config{

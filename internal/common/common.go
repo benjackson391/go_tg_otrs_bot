@@ -137,17 +137,17 @@ func GetPendingTickets(tickets []models.TgTicket) []models.TgTicket {
 	}
 	return pendingTickets
 }
-func GetFileContent(fileID string, bot models.BotAPI) ([]byte, error) {
+func GetFileContent(fileID string, bot models.BotAPI, logger *logger.Logger) ([]byte, error) {
 	fileLink, err := bot.GetFileDirectURL(fileID)
 
 	if err != nil {
-		logger.Warning(err.Error())
+		logger.Warn(err.Error())
 		return nil, err
 	}
 
 	response, err := http.Get(fileLink)
 	if err != nil {
-		logger.Warning(err.Error())
+		logger.Warn(err.Error())
 		return nil, err
 	}
 
@@ -165,5 +165,7 @@ func CleanUpUserData(userData *models.UserState) {
 		UserName:          userData.UserName,
 		CustomerUserLogin: userData.CustomerUserLogin,
 		Action:            userData.Action,
+		State:             0,
+		Trace:             userData.Trace,
 	}
 }

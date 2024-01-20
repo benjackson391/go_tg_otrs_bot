@@ -11,23 +11,21 @@ import (
 	"tg_bot/config"
 	"tg_bot/internal/logger"
 	"tg_bot/internal/models"
-
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
 var (
-	URL       string
-	USER      string
-	PASS      string
-	Mock_OTRS string
-	stateId   int
-	QueueID   int = 2
-	// QueueID    int = 3
-	TypeID     int = 3
-	PriorityID int = 3
-	OwnerID    int = 1
-	LockID     int = 1
-	err        error
+	URL         string
+	USER        string
+	PASS        string
+	Mock_OTRS   string
+	stateId     int
+	QueueIDprod int = 2
+	QueueIDdev  int = 3
+	TypeID      int = 3
+	PriorityID  int = 3
+	OwnerID     int = 1
+	LockID      int = 1
+	err         error
 )
 
 var States = map[string]int{
@@ -36,7 +34,17 @@ var States = map[string]int{
 	"closed_successful": 2,
 }
 
-func CreateOrUpdateTicket(bot models.BotAPI, userData *models.UserState, doc *tgbotapi.Document, documentBytes *[]byte) (models.OtrsResponse, string) {
+func GetQueueID() *int {
+	mode := os.Getenv("MODE")
+	if mode == "DEV" {
+		return &QueueIDdev
+	}
+	return &QueueIDprod
+}
+
+func CreateOrUpdateTicket(bot models.BotAPI, userData *models.UserState, mimetype *string, filename *string, documentBytes *string, logger *logger.Logger) (models.OtrsResponse, string) {
+	userData.Trace = append(userData.Trace, "CreateOrUpdateTicket")
+
 	var ticket models.OtrsResponse
 	var path = "update"
 	var otrs_request models.OtrsRequest
@@ -53,7 +61,7 @@ func CreateOrUpdateTicket(bot models.BotAPI, userData *models.UserState, doc *tg
 			otrs_request = models.OtrsRequest{
 				Ticket: &models.Ticket{
 					Title:        &userData.Topic,
-					QueueID:      &QueueID,
+					QueueID:      GetQueueID(),
 					TypeID:       &TypeID, // Request for service
 					CustomerUser: &userData.CustomerUserLogin,
 					StateID:      &stateId,    // new
@@ -109,17 +117,17 @@ func CreateOrUpdateTicket(bot models.BotAPI, userData *models.UserState, doc *tg
 			}
 		}
 
-		if documentBytes != nil && len(*documentBytes) > 0 {
+		if documentBytes != nil && len(*documentBytes) > 0 && mimetype != nil && filename != nil {
 			otrs_request.Attachment = &models.Attachment{
-				Content:     string(*documentBytes),
-				ContentType: doc.MimeType,
-				Filename:    doc.FileName,
+				Content:     *documentBytes,
+				ContentType: *mimetype,
+				Filename:    *filename,
 			}
 		}
 
-		ticket, err = otrsRequest(path, otrs_request)
+		ticket, err = otrsRequest(path, otrs_request, logger)
 		if err != nil {
-			logger.Warning(err.Error())
+			logger.Warn(err.Error())
 			return models.OtrsResponse{}, "Ошибка при создании заявки: " + err.Error()
 		}
 	}
@@ -152,7 +160,7 @@ func performHttpRequest(path string, encodedJson []byte) ([]byte, error) {
 	return body, err
 }
 
-func otrsRequest(path string, jsonData models.OtrsRequest) (models.OtrsResponse, error) {
+func otrsRequest(path string, jsonData models.OtrsRequest, logger *logger.Logger) (models.OtrsResponse, error) {
 	var responseJson models.OtrsResponse
 
 	jsonData.UserLogin = USER
@@ -160,27 +168,27 @@ func otrsRequest(path string, jsonData models.OtrsRequest) (models.OtrsResponse,
 
 	encodedJson, err := json.Marshal(jsonData)
 	if err != nil {
-		logger.Warning("json.Marshal:" + err.Error())
+		logger.Warn("json.Marshal:" + err.Error())
 		return responseJson, err
 	}
 
 	response, err := performHttpRequest(path, encodedJson)
 	if err != nil {
-		// logger.Warning("performHttpRequest:" + err.Error())
-		// logger.Warning("response: ", response)
+		// logger.Warn("performHttpRequest:" + err.Error())
+		// logger.Warn("response: ", response)
 		return responseJson, err
 	}
 
 	err = json.Unmarshal(response, &responseJson)
 	if err != nil {
-		logger.Warning("json.Unmarshal:" + err.Error())
+		logger.Warn("json.Unmarshal:" + err.Error())
 		return responseJson, err
 	}
 
 	return responseJson, nil
 }
 
-func OtrsConfirm(path string, jsonData models.OtrsConfirmRequest) (models.OtrsConfirmResponse, error) {
+func OtrsConfirm(path string, jsonData models.OtrsConfirmRequest, logger *logger.Logger) (models.OtrsConfirmResponse, error) {
 	var responseJson models.OtrsConfirmResponse
 
 	jsonData.UserLogin = USER
@@ -188,20 +196,20 @@ func OtrsConfirm(path string, jsonData models.OtrsConfirmRequest) (models.OtrsCo
 
 	encodedJson, err := json.Marshal(jsonData)
 	if err != nil {
-		logger.Warning("json.Marshal:" + err.Error())
+		logger.Warn("json.Marshal:" + err.Error())
 		return responseJson, err
 	}
 
 	response, err := performHttpRequest(path, encodedJson)
 	if err != nil {
-		// logger.Warning("performHttpRequest:" + err.Error())
-		// logger.Warning("response: ", response)
+		// logger.Warn("performHttpRequest:" + err.Error())
+		// logger.Warn("response: ", response)
 		return responseJson, err
 	}
 
 	err = json.Unmarshal(response, &responseJson)
 	if err != nil {
-		logger.Warning("json.Unmarshal:" + err.Error())
+		logger.Warn("json.Unmarshal:" + err.Error())
 		return responseJson, err
 	}
 

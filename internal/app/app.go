@@ -20,33 +20,29 @@ var (
 func setupBotAPI() *tgbotapi.BotAPI {
 	bot, err := tgbotapi.NewBotAPI(common.GetBotToken())
 	if err != nil {
-		logger.Error(err.Error())
+		// logger.Error(err.Error())
 	}
 	bot.Debug = false
 	return bot
 }
 
-func run(bot *tgbotapi.BotAPI) {
+func run(bot *tgbotapi.BotAPI, logger *logger.Logger) {
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60
 
 	updates := bot.GetUpdatesChan(u)
 
-	logger.Info("Bot started")
-	for {
-		select {
-		case update := <-updates:
-			go handler.Run(update, bot, &userStates)
-		}
+	// logger.Info("Bot started")
+	for update := range updates {
+		handler.Run(update, bot, &userStates, logger)
 	}
 }
 
 func Run() {
-	if os.Getenv("DEBUG") != "" {
-		logger.EnableDebug()
-	}
 	database.ConnectDB()
 	otrs.SetupOTRSConnector()
 	bot := setupBotAPI()
-	run(bot)
+	logger := logger.New(os.Getenv("DEBUG") == "1")
+
+	run(bot, logger)
 }

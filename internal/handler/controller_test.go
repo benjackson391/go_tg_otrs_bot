@@ -24,12 +24,9 @@ func (m *MockDBService) Find(dest interface{}, conds ...interface{}) *gorm.DB {
 	return args.Get(0).(*gorm.DB)
 }
 
-var wg sync.WaitGroup
-
 func TestUpdateTicket(t *testing.T) {
 	bot := new(MockBotAPI)
-
-	logger.EnableDebug()
+	logger := logger.New(true)
 
 	database.IsAuthorized = func(userName string) (bool, string) {
 		return true, "CustomerUserLogin"
@@ -76,8 +73,7 @@ func TestUpdateTicket(t *testing.T) {
 	var userStates sync.Map
 
 	bot.On("Send", mock.Anything).Return(tgbotapi.Message{}, nil)
-	wg.Add(1)
-	Run(&wg, update, bot, &userStates)
+	Run(update, bot, &userStates, logger)
 
 	answer, ok := bot.SentMessages[0].(tgbotapi.MessageConfig)
 	if !ok {
@@ -87,8 +83,7 @@ func TestUpdateTicket(t *testing.T) {
 	}
 
 	update.CallbackQuery.Data = "update_request"
-	wg.Add(1)
-	Run(&wg, update, bot, &userStates)
+	Run(update, bot, &userStates, logger)
 
 	answer, ok = bot.SentMessages[1].(tgbotapi.MessageConfig)
 	if !ok {

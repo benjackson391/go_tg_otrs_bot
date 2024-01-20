@@ -1,7 +1,11 @@
 package handler
 
 import (
+	"encoding/base64"
 	"fmt"
+	"mime"
+	"net/http"
+	"path/filepath"
 	"strconv"
 	"tg_bot/config"
 	"tg_bot/internal/common"
@@ -12,14 +16,15 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
-func HandleMessage(update tgbotapi.Update, bot models.BotAPI, userData *models.UserState) {
+func HandleMessage(update tgbotapi.Update, bot models.BotAPI, userData *models.UserState, logger *logger.Logger) {
+	userData.Trace = append(userData.Trace, "HandleMessage")
 	if isMediaMessage(update.Message) {
 		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Некорректное вложение, приложите Файл")
 		bot.Send(msg)
 	} else if update.Message.Document != nil {
-		HandleDocument(update, bot, userData)
+		HandleDocument(update, bot, userData, logger)
 	} else if update.Message.Photo != nil {
-		HandleDocument(update, bot, userData)
+		HandlePhoto(update, bot, userData, logger)
 	} else {
 		length := len(update.Message.Text)
 		threshold := config.MessageMaxLength
@@ -38,6 +43,10 @@ func HandleMessage(update tgbotapi.Update, bot models.BotAPI, userData *models.U
 				bot.Send(msg)
 
 			case "waiting_for_comment":
+				if userData.State == 42 {
+					userData.State = 43
+				}
+
 				userData.Description = update.Message.Text
 
 				logger.Debug(fmt.Sprintf("[%s:%s] input description: `%s`", userData.UserName, userData.Action, userData.Description))
@@ -56,19 +65,19 @@ func HandleMessage(update tgbotapi.Update, bot models.BotAPI, userData *models.U
 	}
 }
 
-func HandleDocument(update tgbotapi.Update, bot models.BotAPI, userData *models.UserState) {
-	logger.Debug(fmt.Sprintf("[%s:%s] handle document: `%s`", userData.UserName, userData.Action, update.Message.Document.FileName))
-
+func HandleDocument(update tgbotapi.Update, bot models.BotAPI, userData *models.UserState, logger *logger.Logger) {
+	userData.Trace = append(userData.Trace, "HandleDocument")
 	doc := update.Message.Document
 
 	if doc.FileSize > config.FileSizeLimit {
 		bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, config.BigFileMessage))
 	} else {
-		documentBytes, err := common.GetFileContent(doc.FileID, bot)
+		documentBytes, err := common.GetFileContent(doc.FileID, bot, logger)
 		if err != nil {
 			bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, config.ErrorMsq1))
 		} else {
-			_, text := otrs.CreateOrUpdateTicket(bot, userData, doc, &documentBytes)
+			encodedString := base64.StdEncoding.EncodeToString(documentBytes)
+			_, text := otrs.CreateOrUpdateTicket(bot, userData, &doc.MimeType, &doc.FileName, &encodedString, logger)
 			msg := tgbotapi.NewMessage(update.Message.Chat.ID, text)
 			buttons := []models.Button{
 				{Title: "Назад", Callback: "start"},
@@ -78,11 +87,59 @@ func HandleDocument(update tgbotapi.Update, bot models.BotAPI, userData *models.
 			common.CleanUpUserData(userData)
 		}
 	}
-
 }
 
-func handleAuthoriseMessage(update tgbotapi.Update, bot models.BotAPI, userData *models.UserState) {
-	logger.Debug("message.handleAuthoriseMessage")
+func HandlePhoto(update tgbotapi.Update, bot models.BotAPI, userData *models.UserState, logger *logger.Logger) {
+	userData.Trace = append(userData.Trace, "HandlePhoto")
+
+	// check required field
+	// check current state
+	if userData.State == 0 {
+		// bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "wrong action"))
+		return
+	}
+
+	photos := update.Message.Photo
+
+	photo := photos[len(photos)-1]
+
+	fileConfig := tgbotapi.FileConfig{
+		FileID: photo.FileID,
+	}
+	file, _ := bot.GetFile(fileConfig)
+	fileExt := filepath.Ext(file.FilePath)
+	if fileExt == "" {
+		fileExt = ".png"
+	}
+
+	fileName := fmt.Sprintf("%s%s", strconv.FormatInt(update.Message.Chat.ID, 10), fileExt)
+
+	if file.FileSize > config.FileSizeLimit {
+		bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, config.BigFileMessage))
+	} else {
+		documentBytes, err := common.GetFileContent(photo.FileID, bot, logger)
+		if err != nil {
+			bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, config.ErrorMsq1))
+		} else {
+			contentType := http.DetectContentType(documentBytes)
+			mediaType, _, _ := mime.ParseMediaType(contentType)
+			encodedString := base64.StdEncoding.EncodeToString(documentBytes)
+
+			_, text := otrs.CreateOrUpdateTicket(bot, userData, &mediaType, &fileName, &encodedString, logger)
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, text)
+			buttons := []models.Button{
+				{Title: "Назад", Callback: "start"},
+			}
+			msg.ReplyMarkup = common.GetInlineKeyboard(buttons)
+			bot.Send(msg)
+			common.CleanUpUserData(userData)
+		}
+	}
+}
+
+func handleAuthoriseMessage(update tgbotapi.Update, bot models.BotAPI, userData *models.UserState, logger *logger.Logger) {
+	userData.Trace = append(userData.Trace, "handleAuthoriseMessage")
+
 	if userData.Action != "" {
 		switch userData.Action {
 		case "waiting_for_auth_email":
@@ -94,7 +151,7 @@ func handleAuthoriseMessage(update tgbotapi.Update, bot models.BotAPI, userData 
 			resp, err := otrs.OtrsConfirm("confirm_account", models.OtrsConfirmRequest{
 				Code:  Code,
 				Email: Email,
-			})
+			}, logger)
 
 			var template = "Адрес %s не найден в OTRS!\nПопробуйте другой адрес"
 			if err != nil {
@@ -116,7 +173,7 @@ func handleAuthoriseMessage(update tgbotapi.Update, bot models.BotAPI, userData 
 				otrs.OtrsConfirm("confirm_account", models.OtrsConfirmRequest{
 					Email:         userData.Email,
 					TelegramLogin: update.Message.From.UserName,
-				})
+				}, logger)
 				common.CleanUpUserData(userData)
 			}
 

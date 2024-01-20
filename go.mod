@@ -41,6 +41,9 @@ require (
 )
 
 require (
+	github.com/go-eden/common v0.1.14 // indirect
+	github.com/go-eden/routine v1.0.2 // indirect
+	github.com/go-eden/slf4go v1.1.2 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/stretchr/objx v0.5.1 // indirect
 	golang.org/x/mod v0.9.0 // indirect

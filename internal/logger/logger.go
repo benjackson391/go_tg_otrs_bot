@@ -1,35 +1,39 @@
 package logger
 
 import (
-	"log"
+	"log/slog"
 	"os"
 )
 
-var debugLogger = log.New(os.Stdout, "[DEBUG]:\t", log.Ldate|log.Ltime)
-var infoLogger = log.New(os.Stdout, "[INFO]:\t", log.Ldate|log.Ltime)
-var warningLogger = log.New(os.Stdout, "[WARNING]:\t", log.Ldate|log.Ltime)
-var errorLogger = log.New(os.Stdout, "[ERROR]:\t", log.Ldate|log.Ltime)
+type Logger struct {
+	debug  bool
+	logger *slog.Logger
+}
 
-var debugEnabled = false
+func New(debug bool) *Logger {
+	file, err := os.OpenFile("log.json", os.O_CREATE|os.O_RDWR|os.O_APPEND, 0644)
+	if err != nil {
+		panic(err)
+	}
 
-func Debug(message string, params ...interface{}) {
-	if debugEnabled {
-		debugLogger.Printf(message, params...)
+	logger := slog.New(slog.NewJSONHandler(file, nil))
+	// logger.SetOptions(slf4go.WithTimestampFormat("2006-01-02 15:04:05"))
+
+	return &Logger{
+		logger: logger,
 	}
 }
 
-func Info(message string, params ...interface{}) {
-	infoLogger.Printf(message, params...)
+func (l *Logger) Warn(msg string, args ...any) {
+	l.logger.Warn(msg, args...)
 }
 
-func Warning(message string, params ...interface{}) {
-	warningLogger.Printf(message, params...)
+func (l *Logger) Info(msg string, args ...any) {
+	l.logger.Info(msg, args...)
 }
 
-func Error(message string, params ...interface{}) {
-	errorLogger.Printf(message, params...)
-}
-
-func EnableDebug() {
-	debugEnabled = true
+func (l *Logger) Debug(msg string, args ...any) {
+	if l.debug {
+		l.logger.Debug(msg, args...)
+	}
 }
