@@ -1,0 +1,11 @@
+{"time":"2024-01-22T11:46:13.100706579+03:00","level":"INFO","msg":"start"}
+{"time":"2024-01-22T11:46:13.100889381+03:00","level":"INFO","msg":"vote_5"}
+{"time":"2024-01-22T11:46:13.100995882+03:00","level":"INFO","msg":"vote_5"}
+{"time":"2024-01-22T11:46:13.101332085+03:00","level":"INFO","msg":"vote_4"}
+{"time":"2024-01-22T11:46:13.101480186+03:00","level":"INFO","msg":"vote_3"}
+{"time":"2024-01-22T11:46:13.101589087+03:00","level":"INFO","msg":"vote_2"}
+{"time":"2024-01-22T11:46:13.101692588+03:00","level":"INFO","msg":"vote_"}
+{"time":"2024-01-22T11:46:13.10187159+03:00","level":"INFO","msg":"start"}
+{"time":"2024-01-22T11:46:13.101990191+03:00","level":"INFO","msg":"update","UserName":"UserName","state":"0 -> 0","trace":"Run::HandleUpdate::HandleCallbackQuery::start"}
+{"time":"2024-01-22T11:46:13.102056692+03:00","level":"INFO","msg":"update_request"}
+{"time":"2024-01-22T11:46:13.102198093+03:00","level":"INFO","msg":"update","UserName":"UserName","state":"0 -> 4","trace":"Run::HandleUpdate::HandleCallbackQuery::listTickets"}

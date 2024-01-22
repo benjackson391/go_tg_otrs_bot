@@ -3,3 +3,10 @@ version: '3'
 services:
   web:
     image: ilyaksyonov/gotgbot:latest
+    volumes:
+    - /opt/go_tg_bot/logs_prod:/app/logs
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: '3'

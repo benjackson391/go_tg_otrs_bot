@@ -1,8 +1,10 @@
 package logger
 
 import (
+	"fmt"
 	"log/slog"
 	"os"
+	"path/filepath"
 )
 
 type Logger struct {
@@ -11,7 +13,20 @@ type Logger struct {
 }
 
 func New(debug bool) *Logger {
-	file, err := os.OpenFile("log.json", os.O_CREATE|os.O_RDWR|os.O_APPEND, 0644)
+	filePath := "logs/log.json"
+
+	if _, err := os.Stat(filePath); os.IsNotExist(err) {
+		dir := filepath.Dir(filePath)
+		if err := os.MkdirAll(dir, os.ModePerm); err != nil {
+			fmt.Printf("Ошибка при создании директории: %v\n", err)
+		}
+		_, err := os.Create(filePath)
+		if err != nil {
+			fmt.Printf("Ошибка при создании файла: %v\n", err)
+		}
+	}
+
+	file, err := os.OpenFile(filePath, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0644)
 	if err != nil {
 		panic(err)
 	}
