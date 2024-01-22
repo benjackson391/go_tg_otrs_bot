@@ -175,7 +175,7 @@ func create(callback *tgbotapi.CallbackQuery, bot models.BotAPI, userData *model
 		userData.State = 45
 	}
 
-	if userData.State == 43 || userData.State == 431 || userData.State == 432 {
+	if userData.State == 43 || userData.State == 431 || userData.State == 432 || userData.State == 22 {
 		if userData.Description == "" {
 			return
 		}

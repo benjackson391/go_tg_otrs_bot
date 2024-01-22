@@ -33,6 +33,9 @@ func HandleMessage(update tgbotapi.Update, bot models.BotAPI, userData *models.U
 		} else {
 			switch userData.Action {
 			case "waiting_for_title":
+				if userData.State == 2 {
+					userData.State = 21
+				}
 
 				userData.Topic = update.Message.Text
 
@@ -45,6 +48,10 @@ func HandleMessage(update tgbotapi.Update, bot models.BotAPI, userData *models.U
 			case "waiting_for_comment":
 				if userData.State == 42 {
 					userData.State = 43
+				}
+
+				if userData.State == 21 {
+					userData.State = 22
 				}
 
 				userData.Description = update.Message.Text

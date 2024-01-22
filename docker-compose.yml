@@ -10,6 +10,9 @@ services:
       options:
         max-size: 10m
         max-file: '3'
-    environment:
-      - GODEBUG="gctrace=1"
-      - GOMAXPROCS=10
+    env_file:
+      - .env
+    cap_add:
+      - SYS_PTRACE
+    privileged: true
+    network_mode: "host"
