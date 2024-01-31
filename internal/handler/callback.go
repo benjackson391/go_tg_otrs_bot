@@ -91,7 +91,7 @@ func HandleCallbackQuery(update tgbotapi.Update, bot models.BotAPI, userData *mo
 	}
 }
 
-func addCheckStatusButton(buttons []models.Button, title string, number int, callback string) []models.Button {
+func addCheckStatusButton(buttons []models.Button, title string, number int, callback string, userData *models.UserState) []models.Button {
 	userData.Trace = append(userData.Trace, "addCheckStatusButton")
 	if number > 0 {
 		buttons = append(buttons, models.Button{Title: fmt.Sprintf("%s (%d)", title, number), Callback: callback})
@@ -119,8 +119,8 @@ func checkStatus(callback *tgbotapi.CallbackQuery, bot models.BotAPI, userData *
 	state_type_count := database.GetStateTypeCount(userData.CustomerUserLogin)
 
 	buttons := []models.Button{}
-	buttons = addCheckStatusButton(buttons, open_title, state_type_count.CountOpen, open_callback)
-	buttons = addCheckStatusButton(buttons, pending_title, state_type_count.CountPendAuto, pending_callback)
+	buttons = addCheckStatusButton(buttons, open_title, state_type_count.CountOpen, open_callback, userData)
+	buttons = addCheckStatusButton(buttons, pending_title, state_type_count.CountPendAuto, pending_callback, userData)
 
 	msg := tgbotapi.NewMessage(callback.Message.Chat.ID, "")
 	msg.Text = "Нет открытых заявок"
