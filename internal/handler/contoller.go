@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+	"tg_bot/config"
 	"tg_bot/internal/common"
 	"tg_bot/internal/database"
 	"tg_bot/internal/logger"
@@ -35,6 +36,12 @@ func HandleUpdate(update tgbotapi.Update, bot models.BotAPI, userData *models.Us
 func Run(update tgbotapi.Update, bot models.BotAPI, userStates *sync.Map, logger *logger.Logger) {
 	userID := common.GetUserID(update)
 	userName := common.GetUserName(update)
+	if userName == "" {
+		msg := tgbotapi.NewMessage(update.Message.Chat.ID, config.EmptyUserName)
+		bot.Send(msg)
+		return
+	}
+
 	userData := common.GetUserData(userID, userName, userStates)
 
 	isAuthorized, CustomerUserLogin := database.IsAuthorized(userName)
