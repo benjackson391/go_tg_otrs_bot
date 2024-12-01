@@ -2,6 +2,7 @@ package handler
 
 import (
 	"fmt"
+	"strings"
 	"tg_bot/config"
 	"tg_bot/internal/common"
 	"tg_bot/internal/database"
@@ -31,6 +32,7 @@ func HandleCallbackQuery(update tgbotapi.Update, bot models.BotAPI, userData *mo
 	case "start":
 		start(callback, bot, userData)
 	case "new_request":
+		userData.TicketID = ""
 		userData.State = 2
 		newRequest(callback, bot, userData)
 	case "check_status":
@@ -196,6 +198,7 @@ func preview_ticket(callback *tgbotapi.CallbackQuery, bot models.BotAPI, userDat
 	userData.Trace = append(userData.Trace, "preview_ticket")
 
 	ticket := database.GetTicket(callback.Data)
+	articles := database.GetTicketArticles(callback.Data)
 
 	var formattedTime string
 	if ticket.SolutionTimeDestinationDate > 0 {
@@ -212,7 +215,33 @@ func preview_ticket(callback *tgbotapi.CallbackQuery, bot models.BotAPI, userDat
 		*ticket.Body,
 	)
 
+	if len(articles) > 0 {
+		preview += "\n*Сообщения по заявке:*"
+		for _, article := range articles {
+			dateParsed, _ := time.Parse("2006-01-02 15:04:05", article.CreateTime)
+			dateFormatted := dateParsed.Format("02.01.2006 15:04")
+
+			articleText := fmt.Sprintf(
+				"\n\n📝 *Тема*: %s\n"+
+					"👤 *От*: %s\n"+
+					"📅 *Дата*: %s\n"+
+					"-----------------------------\n"+
+					"%s",
+				article.Subject,
+				article.From,
+				dateFormatted,
+				article.Body,
+				// escapeMarkdown(article.Subject),
+				// escapeMarkdown(article.From),
+				// escapeMarkdown(dateFormatted),
+				// escapeMarkdown(article.Body),
+			)
+			preview += articleText
+		}
+	}
+
 	msg := tgbotapi.NewMessage(callback.Message.Chat.ID, preview)
+	// msg.ParseMode = "MarkdownV2"
 
 	buttons := []models.Button{
 		{
@@ -239,4 +268,29 @@ func preview_ticket(callback *tgbotapi.CallbackQuery, bot models.BotAPI, userDat
 
 	msg.ReplyMarkup = common.GetInlineKeyboard(buttons)
 	bot.Send(msg)
+
+}
+
+func escapeMarkdown(text string) string {
+	var replacer = strings.NewReplacer(
+		"_", "\\_",
+		"*", "\\*",
+		"[", "\\[",
+		"]", "\\]",
+		"(", "\\(",
+		")", "\\)",
+		"~", "\\~",
+		"`", "\\`",
+		">", "\\>",
+		"#", "\\#",
+		"+", "\\+",
+		"-", "\\-",
+		"=", "\\=",
+		"|", "\\|",
+		"{", "\\{",
+		"}", "\\}",
+		".", "\\.",
+		"!", "\\!",
+	)
+	return replacer.Replace(text)
 }

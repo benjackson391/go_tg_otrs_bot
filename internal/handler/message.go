@@ -19,11 +19,24 @@ import (
 func HandleMessage(update tgbotapi.Update, bot models.BotAPI, userData *models.UserState, logger *logger.Logger) {
 	userData.Trace = append(userData.Trace, "HandleMessage")
 	if isMediaMessage(update.Message) {
+		if userData.Action == "waiting_for_title" || userData.Action == "waiting_for_comment" {
+			bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Ожидается ввод текста."))
+			return
+		}
 		msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Некорректное вложение, приложите Файл")
 		bot.Send(msg)
 	} else if update.Message.Document != nil {
+		if userData.Action == "waiting_for_title" || userData.Action == "waiting_for_comment" {
+			bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Ожидается ввод текста."))
+			return
+		}
 		HandleDocument(update, bot, userData, logger)
 	} else if update.Message.Photo != nil {
+		if userData.Action == "waiting_for_title" || userData.Action == "waiting_for_comment" {
+			bot.Send(tgbotapi.NewMessage(update.Message.Chat.ID, "Ожидается ввод текста."))
+			return
+		}
+
 		HandlePhoto(update, bot, userData, logger)
 	} else {
 		length := len(update.Message.Text)
