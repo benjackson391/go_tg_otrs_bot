@@ -3,6 +3,7 @@ version: '3'
 services:
   web:
     image: ilyaksyonov/gotgbot:latest
+    restart: always
     volumes:
     - /opt/go_tg_bot/logs_prod:/app/logs
     logging:

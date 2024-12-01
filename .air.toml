@@ -5,6 +5,8 @@ tmp_dir = "tmp"
 [build]
   bin = ";export MODE=DEV;export $(grep -v '^#' .env | xargs); ./tmp/main"
   cmd = "go build -o ./tmp/main cmd/app/main.go"
+#  cmd = "go build -o ./tmp/main cmd/framework/main.go"
+
   include = [
     ".go",
     ".mod",
