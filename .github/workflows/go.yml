@@ -16,14 +16,13 @@ jobs:
     steps:
       - name: Check out code
         uses: actions/checkout@v4
-
       - name: Cache Go modules
         uses: actions/cache@v3
         with:
           path: |
             ~/.cache/go-build
-          go.mod
-          go.sum
+            go.mod
+            go.sum
           key: ${{ runner.os }}-go-${{ hashFiles('**/*.mod', '**/*.sum') }}
           restore-keys: |
             ${{ runner.os }}-go-
