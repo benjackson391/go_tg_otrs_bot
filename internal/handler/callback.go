@@ -216,25 +216,21 @@ func preview_ticket(callback *tgbotapi.CallbackQuery, bot models.BotAPI, userDat
 	)
 
 	if len(articles) > 0 {
-		preview += "\n*Сообщения по заявке:*"
+		preview += "\nСообщения по заявке:"
 		for _, article := range articles {
 			dateParsed, _ := time.Parse("2006-01-02 15:04:05", article.CreateTime)
 			dateFormatted := dateParsed.Format("02.01.2006 15:04")
 
 			articleText := fmt.Sprintf(
-				"\n\n📝 *Тема*: %s\n"+
-					"👤 *От*: %s\n"+
-					"📅 *Дата*: %s\n"+
-					"-----------------------------\n"+
+				"\n\n📝 Тема: %s\n"+
+					"👤 От: %s\n"+
+					"📅 Дата: %s\n"+
+					"\n"+
 					"%s",
 				article.Subject,
 				article.From,
 				dateFormatted,
 				article.Body,
-				// escapeMarkdown(article.Subject),
-				// escapeMarkdown(article.From),
-				// escapeMarkdown(dateFormatted),
-				// escapeMarkdown(article.Body),
 			)
 			preview += articleText
 		}
